@@ -3,6 +3,9 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import type { Role, Profile, Student, Teacher, Kelas, Mapel, Grade, Attendance, AttendanceStatus, Payment, PaymentType, TeacherAttendance, MunawibMapel, AttendanceLog } from '@/types'
 import * as api from './api'
 
+// Re-export API functions for pages that import directly
+export * from './api'
+
 interface AppState {
   loading: boolean
   profiles: Profile[]
