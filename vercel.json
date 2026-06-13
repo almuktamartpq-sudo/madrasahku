@@ -5,8 +5,16 @@
       "destination": "/assets/$1"
     },
     {
-      "source": "/(.*\\.(js|css|png|svg|jpg|jpeg|gif|ico|json|woff|woff2|ttf|eot))",
-      "destination": "/$1"
+      "source": "/sw.js",
+      "destination": "/sw.js"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/manifest.json"
+    },
+    {
+      "source": "/icon.svg",
+      "destination": "/icon.svg"
     },
     {
       "source": "/(.*)",
