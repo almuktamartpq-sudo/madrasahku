@@ -92,7 +92,7 @@ export default function Home() {
       {/* Mobile Home Screen */}
       <div className="bg-white border-b border-slate-200">
         {/* Header */}
-        <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-b border-emerald-500">
+        <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 text-white shadow-lg">
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg object-cover border-2 border-white/20" />
             <div>

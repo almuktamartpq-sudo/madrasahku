@@ -160,19 +160,40 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   // ============ MOBILE HEADER WITH BACK BUTTON ============
   const mobileHeader = (
-    <div className="lg:hidden flex h-14 items-center gap-3 border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-amber-50 px-3 shrink-0">
-      <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9">
-        <ArrowLeft className="h-5 w-5 text-emerald-700" />
+    <div className="lg:hidden flex h-14 items-center gap-3 border-b border-emerald-600/20 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 px-3 shrink-0 shadow-lg">
+      <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 hover:bg-white/20">
+        <ArrowLeft className="h-5 w-5 text-white" />
       </Button>
       <div className="flex-1 min-w-0">
-        <span className="font-semibold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent truncate">{currentPageTitle}</span>
+        <span className="font-semibold text-white truncate drop-shadow-sm">{currentPageTitle}</span>
       </div>
       {isInstallable && (
-        <Button variant="ghost" size="icon" onClick={handleInstall} className="text-emerald-600">
+        <Button variant="ghost" size="icon" onClick={handleInstall} className="text-white hover:bg-white/20">
           <Download className="h-5 w-5" />
         </Button>
       )}
     </div>
+  );
+
+  // ============ STICKY FOOTER ============
+  const currentYear = new Date().getFullYear();
+  const footer = (
+    <footer className="lg:hidden shrink-0 border-t border-emerald-200/50 bg-white/80 backdrop-blur-md">
+      <div className="px-4 py-3">
+        {/* Quick nav links */}
+        <div className="flex items-center justify-center gap-4 text-xs">
+          <button onClick={() => navigate("/")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Beranda</button>
+          <span className="text-slate-300">|</span>
+          <button onClick={() => navigate("/dashboard")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Dashboard</button>
+          <span className="text-slate-300">|</span>
+          <button onClick={() => navigate("/profile")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Pengaturan</button>
+        </div>
+        {/* Copyright */}
+        <p className="text-center text-[10px] text-slate-400 mt-1.5">
+          &copy; {currentYear} Al-Muktamar. All rights reserved.
+        </p>
+      </div>
+    </footer>
   );
 
   return (
@@ -186,8 +207,11 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-6 lg:p-8">{children}</div>
+          <div className="p-4 md:p-6 lg:p-8 pb-20 lg:pb-8">{children}</div>
         </main>
+
+        {/* Sticky footer (mobile only) */}
+        {footer}
       </div>
     </div>
   );
