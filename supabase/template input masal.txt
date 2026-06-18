@@ -1,0 +1,26 @@
+bagus, sekarang admin tambahkan tombol tambah santri dan tambah input massal data santri excell serta tambahkan template contoh excel (ketika diklik template, terdownload template excel tersebut) serta tandai yang wajib apasaja yang harus di isi, kalau bisa
+
+create table public.students (
+  id uuid not null default gen_random_uuid (),
+  nis text not null,
+  name text not null,
+  photo text null,
+  alamat text not null,
+  phone text not null,
+  tanggal_masuk date not null default CURRENT_DATE,
+  kelas_id uuid null,
+  created_at timestamp with time zone not null default now(),
+  constraint students_pkey primary key (id),
+  constraint students_kelas_id_fkey foreign KEY (kelas_id) references kelas (id) on delete set null
+) TABLESPACE pg_default;
+
+create index IF not exists idx_students_kelas on public.students using btree (kelas_id) TABLESPACE pg_default;
+
+
+create table public.kelas (
+  id uuid not null default gen_random_uuid (),
+  nama text not null,
+  urutan integer not null default 0,
+  created_at timestamp with time zone not null default now(),
+  constraint kelas_pkey primary key (id)
+) TABLESPACE pg_default;

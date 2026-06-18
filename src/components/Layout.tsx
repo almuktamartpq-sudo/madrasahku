@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import type { BeforeInstallPromptEvent } from "@/types";
 import {
   LayoutDashboard,
   Users,
@@ -11,14 +12,15 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Menu,
   BookOpen,
-  User,
   Library,
   CalendarDays,
   UserCircle,
   UserCog,
   Download,
+  AlertTriangle,
+  HeartHandshake,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,32 +41,35 @@ const roleLabels: Record<string, string> = {
 };
 
 const allNavItems: NavItem[] = [
-  { label: "Dashboard", icon: LayoutDashboard, href: "/", roles: ["admin", "guru", "munawib", "orangtua"] },
-  { label: "Santri", icon: Users, href: "/students", roles: ["admin"] },
-  { label: "Guru", icon: UserCheck, href: "/teachers", roles: ["admin"] },
+  { label: "Dashboard", icon: LayoutDashboard, href: "/dashboard", roles: ["admin", "guru", "munawib"] },
+  { label: "Guru", icon: UserCheck, href: "/guru", roles: ["admin", "orangtua"] },
+  { label: "Munawib", icon: UserCircle, href: "/munawib", roles: ["admin"] },
+  { label: "Santri", icon: Users, href: "/students", roles: ["admin", "guru", "munawib", "orangtua"] },
+  { label: "Pelanggaran", icon: AlertTriangle, href: "/pelanggaran", roles: ["admin", "guru", "munawib", "orangtua"] },
+  { label: "Orang Tua", icon: HeartHandshake, href: "/orangtua", roles: ["admin", "guru", "munawib"] },
   { label: "Kelas", icon: Library, href: "/kelas", roles: ["admin"] },
   { label: "Mapel", icon: BookOpen, href: "/mapel", roles: ["admin"] },
   { label: "Nilai", icon: GraduationCap, href: "/grades", roles: ["admin", "guru", "munawib", "orangtua"] },
-  { label: "Absensi Santri", icon: ClipboardCheck, href: "/attendance", roles: ["admin", "guru", "munawib"] },
+  { label: "Absensi Santri", icon: ClipboardCheck, href: "/attendance", roles: ["admin", "guru", "munawib", "orangtua"] },
   { label: "Absensi Guru", icon: CalendarDays, href: "/teacher-attendance", roles: ["admin"] },
-  { label: "Pembayaran", icon: CreditCard, href: "/payments", roles: ["admin", "orangtua"] },
-  { label: "Munawib", icon: UserCircle, href: "/munawib", roles: ["admin"] },
-  { label: "Absensi Saya", icon: CalendarDays, href: "/my-attendance", roles: ["munawib"] },
+  { label: "Pembayaran", icon: CreditCard, href: "/payments", roles: ["admin", "guru", "orangtua"] },
+  { label: "Absensiku", icon: CalendarDays, href: "/my-attendance", roles: ["guru", "munawib"] },
   { label: "Pengguna", icon: UserCog, href: "/profile", roles: ["admin"] },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
     const handler = (e: any) => {
-      e.preventDefault();
-      setInstallPrompt(e);
+      const event = e as BeforeInstallPromptEvent;
+      event.preventDefault();
+      setInstallPrompt(event);
       setIsInstallable(true);
     };
     window.addEventListener("beforeinstallprompt", handler);
@@ -75,7 +80,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     if (!installPrompt) return;
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") {
+    if (outcome === 'accepted') {
       setIsInstallable(false);
     }
     setInstallPrompt(null);
@@ -88,10 +93,14 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   const navItems = allNavItems.filter((item) => user && item.roles.includes(user.role));
 
+  // Current page title for mobile header
+  const currentPageTitle = allNavItems.find((item) => item.href === location.pathname)?.label ?? "MUKTAMAR";
+
+  // ============ DESKTOP SIDEBAR ============
   const sidebar = (
     <div className={cn("flex h-full flex-col bg-emerald-900 text-white transition-all duration-300", collapsed ? "w-[72px]" : "w-[260px]")}>
       <div className="flex h-16 items-center gap-3 px-4 border-b border-white/10">
-        <img src="/icon.png" alt="Logo" className="h-9 w-9 rounded-xl object-cover" />
+        <img src="/logo.png" alt="Logo" className="h-9 w-9 rounded-xl object-cover" />
         {!collapsed && (
           <div className="flex-1 overflow-hidden">
             <h1 className="text-lg font-bold tracking-tight">MUKTAMAR</h1>
@@ -105,7 +114,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <NavLink
             key={item.href}
             to={item.href}
-            onClick={() => setMobileOpen(false)}
             className={({ isActive }) => cn(
               "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
               isActive ? "bg-amber-500/15 text-amber-400" : "text-white/60 hover:bg-white/8 hover:text-white",
@@ -150,33 +158,33 @@ export default function Layout({ children }: { children: ReactNode }) {
     </div>
   );
 
+  // ============ MOBILE HEADER WITH BACK BUTTON ============
+  const mobileHeader = (
+    <div className="lg:hidden flex h-14 items-center gap-3 border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-amber-50 px-3 shrink-0">
+      <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9">
+        <ArrowLeft className="h-5 w-5 text-emerald-700" />
+      </Button>
+      <div className="flex-1 min-w-0">
+        <span className="font-semibold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent truncate">{currentPageTitle}</span>
+      </div>
+      {isInstallable && (
+        <Button variant="ghost" size="icon" onClick={handleInstall} className="text-emerald-600">
+          <Download className="h-5 w-5" />
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
+      {/* Desktop sidebar */}
       <div className="hidden lg:block">{sidebar}</div>
 
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-[260px]">{sidebar}</div>
-        </div>
-      )}
-
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center gap-3 border-b bg-white px-4 lg:hidden shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2 flex-1">
-            <img src="/icon.png" alt="Logo" className="h-7 w-7 rounded-lg object-cover" />
-            <span className="font-bold text-emerald-800">MUKTAMAR</span>
-          </div>
-          {isInstallable && (
-            <Button variant="ghost" size="icon" onClick={handleInstall} className="text-emerald-600">
-              <Download className="h-5 w-5" />
-            </Button>
-          )}
-        </header>
+        {/* Mobile header with back button */}
+        {mobileHeader}
 
+        {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="p-4 md:p-6 lg:p-8">{children}</div>
         </main>

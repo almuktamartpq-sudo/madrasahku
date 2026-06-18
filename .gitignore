@@ -1,2 +1,9 @@
 node_modules
+dist
 .vercel
+.vercel-tmp
+*.backup
+debug-server.js
+.env
+.env.local
+.env.*.local

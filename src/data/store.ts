@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
-import type { Role, Profile, Student, Teacher, Kelas, Mapel, Grade, Attendance, AttendanceStatus, Payment, PaymentType, TeacherAttendance, MunawibMapel, AttendanceLog } from '@/types'
+import type { Role, Profile, Student, Kelas, Mapel, Grade, Attendance, AttendanceStatus, Payment, PaymentType, TeacherAttendance, MunawibMapel, AttendanceLog, Pelanggaran, ParentStudent } from '@/types'
 import * as api from './api'
 
 // Re-export API functions for pages that import directly
@@ -10,7 +10,6 @@ interface AppState {
   loading: boolean
   profiles: Profile[]
   students: Student[]
-  teachers: Teacher[]
   kelas: Kelas[]
   mapel: Mapel[]
   grades: Grade[]
@@ -20,16 +19,14 @@ interface AppState {
   paymentTypes: PaymentType[]
   munawibMapel: MunawibMapel[]
   attendanceLogs: AttendanceLog[]
+  pelanggaran: Pelanggaran[]
+  parentStudents: ParentStudent[]
   
   fetchAll: () => Promise<void>
   // Student methods
   addStudent: (s: Omit<Student, 'id' | 'created_at'>) => Promise<void>
   updateStudent: (id: string, s: Partial<Student>) => Promise<void>
   deleteStudent: (id: string) => Promise<void>
-  // Teacher methods
-  addTeacher: (t: Omit<Teacher, 'id' | 'created_at'>) => Promise<void>
-  updateTeacher: (id: string, t: Partial<Teacher>) => Promise<void>
-  deleteTeacher: (id: string) => Promise<void>
   // Kelas methods
   addKelas: (k: Omit<Kelas, 'id' | 'created_at'>) => Promise<void>
   updateKelas: (id: string, k: Partial<Kelas>) => Promise<void>
@@ -42,6 +39,10 @@ interface AppState {
   addGrade: (g: Omit<Grade, 'id' | 'created_at'>) => Promise<void>
   updateGrade: (id: string, g: Partial<Grade>) => Promise<void>
   deleteGrade: (id: string) => Promise<void>
+  // Pelanggaran methods
+  addPelanggaran: (p: Omit<Pelanggaran, 'id' | 'created_at'>) => Promise<void>
+  updatePelanggaran: (id: string, p: Partial<Pelanggaran>) => Promise<void>
+  deletePelanggaran: (id: string) => Promise<void>
   // Attendance methods
   addAttendanceBatch: (records: Omit<Attendance, 'id' | 'created_at'>[]) => Promise<void>
   updateAttendance: (id: string, status: AttendanceStatus) => Promise<void>
@@ -53,9 +54,12 @@ interface AppState {
   addPaymentType: (pt: Omit<PaymentType, 'id' | 'created_at'>) => Promise<void>
   updatePaymentType: (id: string, pt: Partial<PaymentType>) => Promise<void>
   deletePaymentType: (id: string) => Promise<void>
+  // Parent-Student methods
+  addParentStudent: (parent_id: string, student_id: string) => Promise<void>
+  deleteParentStudent: (id: string) => Promise<void>
   // Account methods
-  createAccount: (name: string, email: string, password: string, role: Role) => Promise<void>
-  updateAccount: (id: string, name: string, role: Role) => Promise<void>
+  createAccount: (name: string, email: string, password: string, role: Role, phone?: string) => Promise<void>
+  updateAccount: (id: string, name: string, role: Role, phone?: string) => Promise<void>
   deleteAccount: (id: string) => Promise<void>
 }
 
@@ -63,7 +67,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   loading: false,
   profiles: [],
   students: [],
-  teachers: [],
   kelas: [],
   mapel: [],
   grades: [],
@@ -73,19 +76,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   paymentTypes: [],
   munawibMapel: [],
   attendanceLogs: [],
+  pelanggaran: [],
+  parentStudents: [],
 
   fetchAll: async () => {
     if (!isSupabaseConfigured) return
     set({ loading: true })
     try {
       const [
-        profiles, students, teachers, kelas, mapel, grades,
+        profiles, students, kelas, mapel, grades,
         attendance, teacherAttendance, payments, paymentTypes,
-        munawibMapel, attendanceLogs
+        munawibMapel, attendanceLogs, pelanggaran, parentStudents
       ] = await Promise.all([
         api.fetchAllAccounts(),
         api.fetchStudents(),
-        api.fetchTeachers(),
         api.fetchKelas(),
         api.fetchMapel(),
         api.fetchGrades(),
@@ -95,8 +99,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         api.fetchPaymentTypes(),
         api.fetchMunawibMapel(),
         api.fetchAttendanceLogs(),
+        api.fetchPelanggaran(),
+        api.fetchAllParentStudents(),
       ])
-      set({ profiles, students, teachers, kelas, mapel, grades, attendance, teacherAttendance, payments, paymentTypes, munawibMapel, attendanceLogs })
+      set({ profiles, students, kelas, mapel, grades, attendance, teacherAttendance, payments, paymentTypes, munawibMapel, attendanceLogs, pelanggaran, parentStudents })
     } finally {
       set({ loading: false })
     }
@@ -113,19 +119,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   deleteStudent: async (id) => {
     await api.deleteStudent(id)
     set((state) => ({ students: state.students.filter((x) => x.id !== id) }))
-  },
-
-  addTeacher: async (t) => {
-    const teacher = await api.createTeacher(t)
-    set((state) => ({ teachers: [...state.teachers, teacher] }))
-  },
-  updateTeacher: async (id, t) => {
-    const teacher = await api.updateTeacher(id, t)
-    set((state) => ({ teachers: state.teachers.map((x) => (x.id === id ? teacher : x)) }))
-  },
-  deleteTeacher: async (id) => {
-    await api.deleteTeacher(id)
-    set((state) => ({ teachers: state.teachers.filter((x) => x.id !== id) }))
   },
 
   addKelas: async (k) => {
@@ -166,6 +159,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     await api.deleteGrade(id)
     set((state) => ({ grades: state.grades.filter((x) => x.id !== id) }))
   },
+  // Pelanggaran methods
+  addPelanggaran: async (p) => {
+    const pelanggaran = await api.createPelanggaran(p)
+    set((state) => ({ pelanggaran: [pelanggaran, ...state.pelanggaran] }))
+  },
+  updatePelanggaran: async (id, p) => {
+    const pelanggaran = await api.updatePelanggaran(id, p)
+    set((state) => ({ pelanggaran: state.pelanggaran.map((x) => (x.id === id ? pelanggaran : x)) }))
+  },
+  deletePelanggaran: async (id) => {
+    await api.deletePelanggaran(id)
+    set((state) => ({ pelanggaran: state.pelanggaran.filter((x) => x.id !== id) }))
+  },
 
   addAttendanceBatch: async (records) => {
     const saved = await api.createAttendanceBatch(records)
@@ -204,18 +210,28 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ paymentTypes: state.paymentTypes.filter((x) => x.id !== id) }))
   },
 
-  createAccount: async (name, email, password, role) => {
-    await api.createAccount(name, email, password, role)
+  createAccount: async (name, email, password, role, phone) => {
+    await api.createAccount(name, email, password, role, phone)
     await get().fetchAll()
   },
-  updateAccount: async (id, name, role) => {
-    await api.updateAccount(id, name, role)
+  updateAccount: async (id, name, role, phone) => {
+    await api.updateAccount(id, name, role, phone)
     set((state) => ({
-      profiles: state.profiles.map((p) => (p.id === id ? { ...p, name, role } : p)),
+      profiles: state.profiles.map((p) => (p.id === id ? { ...p, name, role, phone } : p)),
     }))
   },
   deleteAccount: async (id) => {
     await api.deleteAccount(id)
     set((state) => ({ profiles: state.profiles.filter((p) => p.id !== id) }))
+  },
+
+  // Parent-Student methods
+  addParentStudent: async (parent_id, student_id) => {
+    const ps = await api.createParentStudent(parent_id, student_id)
+    set((state) => ({ parentStudents: [...state.parentStudents, ps] }))
+  },
+  deleteParentStudent: async (id) => {
+    await api.deleteParentStudent(id)
+    set((state) => ({ parentStudents: state.parentStudents.filter((x) => x.id !== id) }))
   },
 }))

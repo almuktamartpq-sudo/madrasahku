@@ -5,40 +5,36 @@ export interface Profile {
   email: string;
   name: string;
   role: Role;
+  avatar?: string;
   phone?: string;
+  kelas_id?: string;
   created_at: string;
 }
 
 export interface Student {
   id: string;
-  name: string;
   nis: string;
+  name: string;
+  photo?: string;
+  alamat: string;
+  phone: string;
+  tanggal_masuk: string;
   kelas_id: string;
-  photo_url?: string;
   created_at: string;
 }
 
-export interface Teacher {
-  id: string;
-  profile_id: string;
-  kelas_id?: string;
-  name: string;
-  email: string;
-  phone?: string;
-  photo_url?: string;
-  created_at: string;
-}
+
 
 export interface Kelas {
   id: string;
-  name: string;
+  nama: string;
   urutan: number;
   created_at: string;
 }
 
 export interface Mapel {
   id: string;
-  name: string;
+  nama: string;
   kelas_id: string;
   created_at: string;
 }
@@ -46,12 +42,12 @@ export interface Mapel {
 export interface Grade {
   id: string;
   student_id: string;
-  mapel_id: string;
-  teacher_id: string;
   type: string;
-  date: string;
   score: number;
-  notes?: string;
+  semester: string;
+  date: string;
+  keterangan?: string;
+  kelas_id?: string;
   created_at: string;
 }
 
@@ -60,6 +56,7 @@ export interface Attendance {
   student_id: string;
   date: string;
   status: AttendanceStatus;
+  keterangan?: string;
   created_at: string;
 }
 
@@ -67,49 +64,77 @@ export type AttendanceStatus = 'hadir' | 'sakit' | 'izin' | 'alfa';
 
 export interface TeacherAttendance {
   id: string;
-  teacher_id: string;
+  profile_id: string;
   date: string;
-  status: TeacherAttendanceStatus;
+  status: string;
+  keterangan?: string;
   created_at: string;
 }
-
-export type TeacherAttendanceStatus = 'hadir' | 'izin' | 'sakit' | 'alfa';
 
 export interface Payment {
   id: string;
   student_id: string;
   type: string;
   amount: number;
-  month?: string;
-  status: PaymentStatus;
-  date: string;
-  notes?: string;
+  status: string;
+  due_date: string;
+  paid_date?: string;
+  bulan?: number;
+  tahun?: number;
+  keterangan?: string;
   created_at: string;
 }
 
-export type PaymentStatus = 'lunas' | 'belum';
+export type PaymentStatus = 'lunas' | 'belum_lunas';
 
 export interface PaymentType {
   id: string;
-  name: string;
-  amount: number;
-  frequency: string;
+  nama: string;
+  jumlah: number;
+  is_active: boolean;
   created_at: string;
 }
 
 export interface MunawibMapel {
   id: string;
-  munawib_id: string;
+  profile_id: string;
   mapel_id: string;
-  kelas_id: string;
+}
+
+export interface MunawibAttendance {
+  id: string;
+  profile_id: string;
+  date: string;
+  status: string;
+  keterangan?: string;
   created_at: string;
 }
 
 export interface AttendanceLog {
   id: string;
-  munawib_id: string;
+  profile_id: string;
   date: string;
-  status: AttendanceStatus;
-  notes?: string;
+  status: string;
+  keterangan?: string;
   created_at: string;
+}
+
+export type PelanggaranJenis = 'ringan' | 'sedang' | 'berat';
+export type PelanggaranKartu = 'kuning' | 'oranye' | 'merah';
+
+export interface Pelanggaran {
+  id: string;
+  student_id: string;
+  tanggal: string;
+  jenis: PelanggaranJenis;
+  kartu: PelanggaranKartu;
+  deskripsi: string;
+  created_by?: string;
+  created_at: string;
+}
+
+export interface ParentStudent {
+  id: string;
+  parent_id: string;
+  student_id: string;
 }

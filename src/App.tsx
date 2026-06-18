@@ -3,13 +3,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import Login from "@/pages/Login";
+import Home from "@/pages/Home";
 import Dashboard from "@/pages/Dashboard";
 import Students from "@/pages/Students";
-import Teachers from "@/pages/Teachers";
+import GuruPage from "@/pages/Guru";
+import KelasPage from "@/pages/Kelas";
+import MapelPage from "@/pages/Mapel";
 import Grades from "@/pages/Grades";
 import Attendance from "@/pages/Attendance";
+import TeacherAttendance from "@/pages/TeacherAttendance";
 import Payments from "@/pages/Payments";
+import Pelanggaran from "@/pages/Pelanggaran";
+import MunawibPage from "@/pages/Munawib";
+import MyAttendance from "@/pages/MyAttendance";
 import Profile from "@/pages/Profile";
+import Orangtua from "@/pages/Orangtua";
 import { Toaster } from "sonner";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -25,6 +33,14 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route
         path="/"
+        element={
+          <ProtectedRoute>
+            <Home />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute>
             <Layout>
@@ -44,11 +60,31 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/teachers"
+        path="/guru"
         element={
           <ProtectedRoute>
             <Layout>
-              <Teachers />
+              <GuruPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kelas"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <KelasPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mapel"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MapelPage />
             </Layout>
           </ProtectedRoute>
         }
@@ -74,6 +110,26 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/pelanggaran"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Pelanggaran />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/teacher-attendance"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TeacherAttendance />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/payments"
         element={
           <ProtectedRoute>
@@ -89,6 +145,36 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Profile />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/munawib"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MunawibPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-attendance"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyAttendance />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/orangtua"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Orangtua />
             </Layout>
           </ProtectedRoute>
         }

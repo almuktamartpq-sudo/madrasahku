@@ -1,19 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  fetchStudents,
-  fetchTeachers,
-  fetchPayments,
-  fetchAttendance,
-  fetchGrades,
-  fetchParentStudentIds,
-  fetchTeacherKelasId,
-  fetchTeacherAttendance,
-  fetchTeacherIdByProfile,
-  fetchMunawibKelasIds,
-  fetchMunawibIdByProfile,
-  fetchMunawibAttendance,
-} from "@/data/store";
+import { useAppStore } from "@/data/store";
+import * as api from "@/data/api";
 import {
   Users,
   UserCheck,
@@ -22,73 +10,41 @@ import {
   GraduationCap,
   TrendingUp,
   AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
-import type { Student, Teacher, Payment, Attendance, Grade, TeacherAttendanceItem, MunawibAttendanceItem } from "@/types";
+import type { MunawibAttendance } from "@/types";
 import { cn } from "@/lib/utils";
 
-const statCardBase = "rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm hover:shadow-md transition-shadow duration-300";
+const statCardBase = "rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm";
 const statIconBase = "flex h-10 w-10 items-center justify-center rounded-xl";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
-  const [parentStudentIds, setParentStudentIds] = useState<string[]>([]);
-  const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
-  const [teacherAttendance, setTeacherAttendance] = useState<TeacherAttendanceItem[]>([]);
-  const [myTeacherId, setMyTeacherId] = useState<string | null>(null);
+  const { students, profiles, payments, attendance, grades, kelas, teacherAttendance, parentStudents } = useAppStore();
 
-  // Munawib state
-  const [munawibKelasIds, setMunawibKelasIds] = useState<string[]>([]);
-  const [myMunawibId, setMyMunawibId] = useState<string | null>(null);
-  const [munawibAttendance, setMunawibAttendance] = useState<MunawibAttendanceItem[]>([]);
-
+  const [munawibAttendance, setMunawibAttendance] = useState<MunawibAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      const [s, t, p, a, g] = await Promise.all([
-        fetchStudents(),
-        fetchTeachers(),
-        fetchPayments(),
-        fetchAttendance(),
-        fetchGrades(),
-      ]);
-      setStudents(s);
-      setTeachers(t);
-      setPayments(p);
-      setAttendance(a);
-      setGrades(g);
+  const parentStudentIds = useMemo(() => {
+    if (user?.role !== "orangtua") return [];
+    return parentStudents.filter(ps => ps.parent_id === user.id).map(ps => ps.student_id);
+  }, [user, parentStudents]);
 
-      if (user?.role === "orangtua") {
-        const ids = await fetchParentStudentIds(user.id);
-        setParentStudentIds(ids);
-      }
-      if (user?.role === "guru") {
-        const kid = await fetchTeacherKelasId(user.id);
-        setGuruKelasId(kid);
-        const tid = await fetchTeacherIdByProfile(user.id);
-        setMyTeacherId(tid);
-      }
-      if (user?.role === "munawib") {
-        const kids = await fetchMunawibKelasIds(user.id);
-        setMunawibKelasIds(kids);
-        const mid = await fetchMunawibIdByProfile(user.id);
-        setMyMunawibId(mid);
-        const mData = await fetchMunawibAttendance();
-        setMunawibAttendance(mData);
-      }
-      // Fetch teacher attendance
-      const taData = await fetchTeacherAttendance();
-      setTeacherAttendance(taData);
+  const guruKelasId = useMemo(() => {
+    if (user?.role !== "guru") return null;
+    const prof = profiles.find(p => p.id === user.id);
+    return prof?.kelas_id ?? null;
+  }, [user, profiles]);
+
+  useEffect(() => {
+    const loadMunawib = async () => {
+      try {
+        const data = await api.fetchMunawibAttendance();
+        setMunawibAttendance(data);
+      } catch { /* ignore */ }
       setLoading(false);
     };
-    fetchAll();
-  }, [user]);
+    loadMunawib();
+  }, []);
 
   // Filter based on role
   const filteredStudents = useMemo(() => {
@@ -96,17 +52,14 @@ export default function DashboardPage() {
       return students.filter((s) => parentStudentIds.includes(s.id));
     }
     if (user?.role === "guru" && guruKelasId) {
-      return students.filter((s) => s.kelasId === guruKelasId);
-    }
-    if (user?.role === "munawib" && munawibKelasIds.length > 0) {
-      return students.filter((s) => munawibKelasIds.includes(s.kelasId ?? ""));
+      return students.filter((s) => s.kelas_id === guruKelasId);
     }
     return students;
-  }, [students, user, parentStudentIds, guruKelasId, munawibKelasIds]);
+  }, [students, user, parentStudentIds, guruKelasId]);
 
   const filteredPayments = useMemo(() => {
     if (user?.role === "orangtua" && parentStudentIds.length > 0) {
-      return payments.filter((p) => parentStudentIds.includes(p.studentId));
+      return payments.filter((p) => parentStudentIds.includes(p.student_id));
     }
     return payments;
   }, [payments, user, parentStudentIds]);
@@ -114,33 +67,26 @@ export default function DashboardPage() {
   const filteredAttendance = useMemo(() => {
     let list = attendance;
     if (user?.role === "orangtua" && parentStudentIds.length > 0) {
-      list = list.filter((a) => parentStudentIds.includes(a.studentId));
+      list = list.filter((a) => parentStudentIds.includes(a.student_id));
     }
     if (user?.role === "guru" && guruKelasId) {
-      const kelasStudentIds = new Set(students.filter((s) => s.kelasId === guruKelasId).map((s) => s.id));
-      list = list.filter((a) => kelasStudentIds.has(a.studentId));
-    }
-    if (user?.role === "munawib" && munawibKelasIds.length > 0) {
-      const kelasStudentIds = new Set(students.filter((s) => munawibKelasIds.includes(s.kelasId ?? "")).map((s) => s.id));
-      list = list.filter((a) => kelasStudentIds.has(a.studentId));
+      const kelasStudentIds = new Set(students.filter((s) => s.kelas_id === guruKelasId).map((s) => s.id));
+      list = list.filter((a) => kelasStudentIds.has(a.student_id));
     }
     return list;
-  }, [attendance, user, parentStudentIds, guruKelasId, munawibKelasIds, students]);
+  }, [attendance, user, parentStudentIds, guruKelasId, students]);
 
   const filteredGrades = useMemo(() => {
     if (user?.role === "orangtua" && parentStudentIds.length > 0) {
-      return grades.filter((g) => parentStudentIds.includes(g.studentId));
+      return grades.filter((g) => parentStudentIds.includes(g.student_id));
     }
     if (user?.role === "guru" && guruKelasId) {
-      return grades.filter((g) => g.kelasId === guruKelasId);
-    }
-    if (user?.role === "munawib" && munawibKelasIds.length > 0) {
-      return grades.filter((g) => munawibKelasIds.includes(g.kelasId ?? ""));
+      return grades.filter((g) => g.kelas_id === guruKelasId);
     }
     return grades;
-  }, [grades, user, parentStudentIds, guruKelasId, munawibKelasIds]);
+  }, [grades, user, parentStudentIds, guruKelasId]);
 
-  // Stats
+  // Absensi Santri Hari Ini
   const todaysAttendance = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
     const todayData = filteredAttendance.filter((a) => a.date === today);
@@ -148,65 +94,60 @@ export default function DashboardPage() {
       hadir: todayData.filter((a) => a.status === "hadir").length,
       izin: todayData.filter((a) => a.status === "izin").length,
       sakit: todayData.filter((a) => a.status === "sakit").length,
-      alpha: todayData.filter((a) => a.status === "alpha").length,
+      alpha: todayData.filter((a) => a.status === "alfa").length,
       total: todayData.length,
     };
   }, [filteredAttendance]);
 
+  // Pembayaran
   const paymentStats = useMemo(() => {
     const lunas = filteredPayments.filter((p) => p.status === "lunas").length;
     const pending = filteredPayments.filter((p) => p.status !== "lunas").length;
     return { lunas, pending, total: filteredPayments.length };
   }, [filteredPayments]);
 
+  // Rata-rata Nilai
   const avgGrade = useMemo(() => {
     if (filteredGrades.length === 0) return 0;
     const sum = filteredGrades.reduce((acc, g) => acc + g.score, 0);
     return Math.round(sum / filteredGrades.length);
   }, [filteredGrades]);
 
-  // Teacher attendance stats
+  // Absensi Guru Hari Ini (admin only)
   const todaysTeacherAttendance = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    let data = teacherAttendance.filter((a) => a.date === today);
-    // Guru only sees their own attendance
-    if (user?.role === "guru" && myTeacherId) {
-      data = data.filter((a) => a.teacherId === myTeacherId);
-    }
+    const data = teacherAttendance.filter((a) => a.date === today);
     return {
       hadir: data.filter((a) => a.status === "hadir").length,
       izin: data.filter((a) => a.status === "izin").length,
       sakit: data.filter((a) => a.status === "sakit").length,
-      alpha: data.filter((a) => a.status === "alpha").length,
+      alpha: data.filter((a) => a.status === "alfa").length,
       total: data.length,
     };
-  }, [teacherAttendance, user, myTeacherId]);
+  }, [teacherAttendance]);
 
-  // Munawib attendance stats
+  // Absensi Munawib Hari Ini (admin only)
   const todaysMunawibAttendance = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
-    let data = munawibAttendance.filter((a) => a.date === today);
-    if (user?.role === "munawib" && myMunawibId) {
-      data = data.filter((a) => a.munawibId === myMunawibId);
-    }
+    const data = munawibAttendance.filter((a) => a.date === today);
     return {
       hadir: data.filter((a) => a.status === "hadir").length,
       izin: data.filter((a) => a.status === "izin").length,
       sakit: data.filter((a) => a.status === "sakit").length,
-      alpha: data.filter((a) => a.status === "alpha").length,
+      alpha: data.filter((a) => a.status === "alfa").length,
       total: data.length,
     };
-  }, [munawibAttendance, user, myMunawibId]);
+  }, [munawibAttendance]);
 
-  // Recent payments
+  // Recent payments (belum lunas)
   const recentPayments = useMemo(
-    () => filteredPayments.filter((p) => p.status !== "lunas").sort(() => 0.5 - Math.random()).slice(0, 5),
+    () => filteredPayments.filter((p) => p.status !== "lunas").slice(0, 5),
     [filteredPayments]
   );
 
   // Recent absences
   const recentAbsences = useMemo(
-    () => filteredAttendance.filter((a) => a.status !== "hadir").sort(() => 0.5 - Math.random()).slice(0, 5),
+    () => filteredAttendance.filter((a) => a.status !== "hadir").slice(0, 5),
     [filteredAttendance]
   );
 
@@ -215,61 +156,66 @@ export default function DashboardPage() {
 
   const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? "-";
 
+  const getKelasName = (kelasId: string) => {
+    return kelas.find((k) => k.id === kelasId)?.nama ?? "-";
+  };
+
   if (loading) {
-    return <div className="flex items-center justify-center h-48 text-slate-500">Memuat dashboard...</div>;
+    return <div className="flex items-center justify-center h-48 text-emerald-500 bg-emerald-100 rounded-xl">Memuat dashboard...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Selamat datang, {user?.name}. Ringkasan data sekolah hari ini.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Dashboard</h1>
+          <p className="text-sm text-emerald-600 mt-0.5">
+            Selamat datang, {user?.name}. Ringkasan data sekolah hari ini.
+          </p>
+        </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
         <div className={statCardBase}>
-          <div className={cn(statIconBase, "bg-blue-50 text-blue-600")}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <Users className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-800">{filteredStudents.length}</p>
-          <p className="text-xs text-slate-500">Total Santri</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{filteredStudents.length}</p>
+          <p className="text-xs text-emerald-600">Total Santri</p>
         </div>
 
         <div className={statCardBase}>
-          <div className={cn(statIconBase, "bg-teal-50 text-teal-600")}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <UserCheck className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-800">{teachers.length}</p>
-          <p className="text-xs text-slate-500">Total Guru</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{profiles.filter((p) => p.role === "guru").length}</p>
+          <p className="text-xs text-emerald-600">Total Guru</p>
         </div>
 
         <div className={statCardBase}>
-          <div className={cn(statIconBase, "bg-amber-50 text-amber-600")}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <CreditCard className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-800">{paymentStats.lunas}</p>
-          <p className="text-xs text-slate-500">Pembayaran Lunas</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{paymentStats.lunas}</p>
+          <p className="text-xs text-emerald-600">Pembayaran Lunas</p>
         </div>
 
         <div className={statCardBase}>
-          <div className={cn(statIconBase, "bg-purple-50 text-purple-600")}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <GraduationCap className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-slate-800">{avgGrade}</p>
-          <p className="text-xs text-slate-500">Rata-rata Nilai</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{avgGrade}</p>
+          <p className="text-xs text-emerald-600">Rata-rata Nilai</p>
         </div>
       </div>
 
       {/* Attendance & Payments */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Attendance */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+        {/* Absensi Santri Hari Ini */}
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <ClipboardCheck className="h-5 w-5 text-teal-600" />
-            <h2 className="font-semibold text-slate-800">Absensi Hari Ini</h2>
+            <ClipboardCheck className="h-5 w-5 text-emerald-600" />
+            <h2 className="font-semibold text-emerald-800">Absensi Santri Hari Ini</h2>
           </div>
           {todaysAttendance.total === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">
@@ -285,15 +231,15 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Payment Summary */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+        {/* Status Pembayaran */}
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
             <CreditCard className="h-5 w-5 text-amber-600" />
-            <h2 className="font-semibold text-slate-800">Status Pembayaran</h2>
+            <h2 className="font-semibold text-emerald-800">Status Pembayaran</h2>
           </div>
           <div className="space-y-3">
             <StatRow label="Lunas" value={paymentStats.lunas} total={paymentStats.total} color="bg-teal-500" />
-            <StatRow label="Belum Lunas & Tertunda" value={paymentStats.pending} total={paymentStats.total} color="bg-red-500" />
+            <StatRow label="Belum Lunas" value={paymentStats.pending} total={paymentStats.total} color="bg-red-500" />
           </div>
           {recentPayments.length > 0 && (
             <div className="mt-4 pt-4 border-t border-slate-100">
@@ -301,10 +247,10 @@ export default function DashboardPage() {
               {recentPayments.map((p) => (
                 <div key={p.id} className="flex items-center justify-between py-1.5 text-sm">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="h-3.5 w-3.5 text-red-400" />
-                    <span className="text-slate-700">{getStudentName(p.studentId)}</span>
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-emerald-700">{getStudentName(p.student_id)}</span>
                   </div>
-                  <span className="text-slate-500">{formatRupiah(p.amount)}</span>
+                  <span className="text-emerald-600 font-medium">{formatRupiah(p.amount)}</span>
                 </div>
               ))}
             </div>
@@ -312,14 +258,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Teacher Attendance */}
-      {user?.role !== "munawib" && (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+      {/* Absensi Guru Hari Ini - admin only */}
+      {user?.role === "admin" && (
+      <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
         <div className="flex items-center gap-2 mb-4">
           <UserCheck className="h-5 w-5 text-emerald-600" />
-          <h2 className="font-semibold text-slate-800">
-            {user?.role === "guru" ? "Absensiku Hari Ini" : "Absensi Guru Hari Ini"}
-          </h2>
+          <h2 className="font-semibold text-emerald-800">Absensi Guru Hari Ini</h2>
         </div>
         {todaysTeacherAttendance.total === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">
@@ -336,16 +280,16 @@ export default function DashboardPage() {
       </div>
       )}
 
-      {/* Munawib Attendance */}
-      {user?.role === "munawib" && (
-      <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+      {/* Absensi Munawib Hari Ini - admin only */}
+      {user?.role === "admin" && (
+      <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
         <div className="flex items-center gap-2 mb-4">
-          <UserCheck className="h-5 w-5 text-purple-600" />
-          <h2 className="font-semibold text-slate-800">Absensiku Hari Ini</h2>
+          <UserCheck className="h-5 w-5 text-amber-600" />
+          <h2 className="font-semibold text-emerald-800">Absensi Munawib Hari Ini</h2>
         </div>
         {todaysMunawibAttendance.total === 0 ? (
           <p className="text-sm text-slate-400 py-4 text-center">
-            Tidak ada data absensi untuk hari ini.
+            Tidak ada data absensi munawib untuk hari ini.
           </p>
         ) : (
           <div className="grid grid-cols-4 gap-4">
@@ -360,27 +304,27 @@ export default function DashboardPage() {
 
       {/* Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Absences */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+        {/* Ketidakhadiran Terbaru */}
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-5 w-5 text-purple-600" />
-            <h2 className="font-semibold text-slate-800">Ketidakhadiran Terbaru</h2>
+            <TrendingUp className="h-5 w-5 text-emerald-600" />
+            <h2 className="font-semibold text-emerald-800">Ketidakhadiran Terbaru</h2>
           </div>
           {recentAbsences.length === 0 ? (
             <p className="text-sm text-slate-400 py-4 text-center">Semua santri hadir pada catatan terbaru.</p>
           ) : (
             <div className="space-y-2">
               {recentAbsences.map((a) => (
-                <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50">
+                <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-emerald-50">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{getStudentName(a.studentId)}</p>
-                    <p className="text-xs text-slate-400">{a.date} &middot; {a.keterangan}</p>
+                    <p className="text-sm font-medium text-emerald-700">{getStudentName(a.student_id)}</p>
+                    <p className="text-xs text-emerald-500">{a.date} &middot; {a.keterangan}</p>
                   </div>
                   <span className={cn(
                     "text-xs font-semibold px-2.5 py-1 rounded-full",
                     a.status === "sakit" && "bg-blue-50 text-blue-600",
                     a.status === "izin" && "bg-amber-50 text-amber-600",
-                    a.status === "alpha" && "bg-red-50 text-red-600",
+                    a.status === "alfa" && "bg-red-50 text-red-600",
                   )}>
                     {a.status === "sakit" ? "Sakit" : a.status === "izin" ? "Izin" : "Alpha"}
                   </span>
@@ -390,16 +334,16 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Top Students */}
-        <div className="rounded-2xl border border-slate-200/60 bg-white p-5 shadow-sm">
+        {/* Nilai Tertinggi */}
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
-            <GraduationCap className="h-5 w-5 text-blue-600" />
-            <h2 className="font-semibold text-slate-800">Nilai Tertinggi</h2>
+            <GraduationCap className="h-5 w-5 text-emerald-600" />
+            <h2 className="font-semibold text-emerald-800">Nilai Tertinggi</h2>
           </div>
           <div className="space-y-2">
             {(() => {
               const studentAvgs = filteredStudents.map((s) => {
-                const sGrades = filteredGrades.filter((g) => g.studentId === s.id);
+                const sGrades = filteredGrades.filter((g) => g.student_id === s.id);
                 const avg = sGrades.length > 0 ? Math.round(sGrades.reduce((a, g) => a + g.score, 0) / sGrades.length) : 0;
                 return { student: s, avg };
               });
@@ -407,7 +351,7 @@ export default function DashboardPage() {
                 .sort((a, b) => b.avg - a.avg)
                 .slice(0, 5)
                 .map(({ student, avg }, i) => (
-                  <div key={student.id} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-slate-50">
+                  <div key={student.id} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-emerald-50">
                     <span className={cn(
                       "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold",
                       i === 0 ? "bg-amber-100 text-amber-700" :
@@ -418,10 +362,10 @@ export default function DashboardPage() {
                       {i + 1}
                     </span>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-700">{student.name}</p>
-                      <p className="text-xs text-slate-400">{student.kelas ?? "-"}</p>
+                      <p className="text-sm font-medium text-emerald-700">{student.name}</p>
+                      <p className="text-xs text-emerald-500">{getKelasName(student.kelas_id)}</p>
                     </div>
-                    <span className="text-sm font-bold text-teal-600">{avg}</span>
+                    <span className="text-sm font-bold text-emerald-600">{avg}</span>
                   </div>
                 ));
             })()}
@@ -429,20 +373,21 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+    </div>
   );
 }
 
-function StatRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+const StatRow = ({ label, value, total, color }: { label: string; value: number; total: number; color: string }) => {
   const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-sm text-slate-600">{label}</span>
-        <span className="text-sm font-semibold text-slate-800">{value} ({pct}%)</span>
+        <span className="text-sm text-emerald-600">{label}</span>
+        <span className="text-sm font-semibold text-emerald-800">{value} ({pct}%)</span>
       </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+      <div className="h-2 rounded-full bg-emerald-100 overflow-hidden">
         <div className={cn("h-full rounded-full transition-all duration-700", color)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
-}
+};
