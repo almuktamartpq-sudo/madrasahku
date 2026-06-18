@@ -4,7 +4,6 @@
   "description": "Sistem Manajemen Madrasah Muktamar",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
   "theme_color": "#047857",
   "orientation": "portrait-primary",
   "icons": [
