@@ -18,9 +18,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar } from "lucide-react";
+import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  isOffDay,
+  isHoliday,
+  getHoliday,
+  getHolidayDates,
+  getTodayHolidayNotice,
+  getUpcomingHolidayNotice,
+  addCustomHoliday,
+  OFF_DAY_NAME,
+} from "@/data/holidays";
 
 type AttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 
@@ -134,6 +144,23 @@ export default function TeacherAttendancePage() {
     const munawibDates = new Set(munawibAttendance.map((a: { date: string }) => a.date));
     return new Set([...guruDates, ...munawibDates]);
   }, [teacherAttendance, munawibAttendance]);
+
+  // Holiday notification on mount
+  useEffect(() => {
+    const todayNotice = getTodayHolidayNotice();
+    if (todayNotice) toast.info(todayNotice, { duration: 5000 });
+    const upcoming = getUpcomingHolidayNotice();
+    if (upcoming && !todayNotice) toast.info(`Libur mendatang: ${upcoming}`, { duration: 4000 });
+  }, []);
+
+  // Liburkan handler (admin only)
+  const handleLiburkan = () => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const holidayName = `Libur ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`;
+    addCustomHoliday(todayStr, holidayName);
+    toast.success(`Tanggal ${todayStr} ditandai sebagai hari libur`);
+    window.location.reload();
+  };
 
   const calendarGrid = useMemo(() => {
     const { year, month } = calMonth;
@@ -355,12 +382,31 @@ export default function TeacherAttendancePage() {
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensi Guru & Munawib</h1>
-          {!allHaveRecords && (
-            <Button onClick={handleBatchAbsensi} className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg">
-              <ClipboardCheck className="mr-2 h-4 w-4" /> Absen Semua Hadir
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {user?.role === "admin" && (
+              <Button onClick={handleLiburkan} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                <Palmtree className="mr-2 h-4 w-4" /> Liburkan Hari Ini
+              </Button>
+            )}
+            {!allHaveRecords && (
+              <Button onClick={handleBatchAbsensi} className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg">
+                <ClipboardCheck className="mr-2 h-4 w-4" /> Absen Semua Hadir
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Holiday/Off-day banner */}
+        {(isOffDay(selectedDate) || isHoliday(selectedDate)) && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <Palmtree className="h-4 w-4 shrink-0" />
+            <span>
+              {isHoliday(selectedDate)
+                ? `Libur: ${getHoliday(selectedDate)?.name}`
+                : `${OFF_DAY_NAME} — Hari libur madrasah`}
+            </span>
+          </div>
+        )}
 
         {/* Date & Search */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
@@ -403,16 +449,22 @@ export default function TeacherAttendancePage() {
                         if (cell.blank) return <div key={i} />;
                         const isSelected = cell.date === selectedDate;
                         const hasAtt = datesWithAttendance.has(cell.date);
-                        const isFuture = cell.date > today;
+                        const isThursday = new Date(cell.date).getDay() === 4;
+                        const holiday = getHoliday(cell.date);
+                        const isNonOp = isThursday || !!holiday;
+                        const isDisabled = isFuture || isNonOp;
                         return (
                           <button
                             key={i}
-                            disabled={isFuture}
+                            disabled={isDisabled}
                             onClick={() => { setSelectedDate(cell.date); setCalOpen(false); }}
+                            title={holiday ? holiday.name : isThursday ? `${OFF_DAY_NAME} - Libur` : undefined}
                             className={cn(
                               "h-8 w-8 rounded-lg text-xs font-medium transition-colors flex items-center justify-center mx-auto",
                               isFuture
                                 ? "text-emerald-200 cursor-not-allowed"
+                                : isNonOp
+                                ? "bg-red-50 text-red-400 cursor-not-allowed line-through"
                                 : isSelected
                                 ? "bg-emerald-700 text-white"
                                 : hasAtt

@@ -10,6 +10,14 @@ import { Label } from "@/components/ui/label";
 import { CalendarDays, Save, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import {
+  isOffDay,
+  isHoliday,
+  getHoliday,
+  getTodayHolidayNotice,
+  getUpcomingHolidayNotice,
+  OFF_DAY_NAME,
+} from "@/data/holidays";
 
 // Guru/Munawib hanya bisa ajukan Izin atau Sakit (Hadir & Alpha diurus admin)
 const selfStatusOptions = [
@@ -42,6 +50,11 @@ export default function MyAttendance() {
   useEffect(() => {
     loadMyData();
     if (user?.role === "munawib") loadMySchedule();
+    // Holiday notification
+    const todayNotice = getTodayHolidayNotice();
+    if (todayNotice) toast.info(todayNotice, { duration: 5000 });
+    const upcoming = getUpcomingHolidayNotice();
+    if (upcoming && !todayNotice) toast.info(`Libur mendatang: ${upcoming}`, { duration: 4000 });
   }, [user]);
 
   const loadMyData = async () => {
@@ -170,6 +183,18 @@ export default function MyAttendance() {
       <div className="container mx-auto p-4 space-y-6">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensiku</h1>
 
+        {/* Holiday/Off-day banner */}
+        {(isOffDay(selectedDate) || isHoliday(selectedDate)) && (
+          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+            <CalendarDays className="h-4 w-4 shrink-0" />
+            <span>
+              {isHoliday(selectedDate)
+                ? `Libur: ${getHoliday(selectedDate)?.name}`
+                : `${OFF_DAY_NAME} — Hari libur madrasah`}
+            </span>
+          </div>
+        )}
+
         {/* Name Display */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-6">
@@ -231,10 +256,13 @@ export default function MyAttendance() {
                       const isSelected = cell.date === selectedDate;
                       const hasAtt = datesWithAttendance.has(cell.date);
                       const isFuture = cell.date > today;
+                      const isThursday = new Date(cell.date).getDay() === 4;
+                      const holiday = getHoliday(cell.date);
+                      const isNonOp = isThursday || !!holiday;
                       const isNotScheduled = !isGuru && myScheduledDays !== null && !myScheduledDays.has(
                         new Date(cell.date).getDay() === 0 ? 7 : new Date(cell.date).getDay()
                       );
-                      const isDisabled = isFuture || isNotScheduled;
+                      const isDisabled = isFuture || isNonOp || isNotScheduled;
                       return (
                         <button
                           key={i}
@@ -244,6 +272,8 @@ export default function MyAttendance() {
                             "h-8 w-8 rounded-lg text-xs font-medium transition-colors flex items-center justify-center mx-auto",
                             isDisabled
                               ? "text-emerald-200 cursor-not-allowed"
+                              : isNonOp
+                              ? "bg-red-50 text-red-400 cursor-not-allowed line-through"
                               : isSelected
                               ? "bg-emerald-700 text-white"
                               : hasAtt

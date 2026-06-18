@@ -2,6 +2,7 @@ import { useState, useEffect, type ReactNode } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BeforeInstallPromptEvent } from "@/types";
+import Footer from "@/components/Footer";
 import {
   LayoutDashboard,
   Users,
@@ -175,27 +176,6 @@ export default function Layout({ children }: { children: ReactNode }) {
     </div>
   );
 
-  // ============ STICKY FOOTER ============
-  const currentYear = new Date().getFullYear();
-  const footer = (
-    <footer className="lg:hidden shrink-0 border-t border-emerald-200/50 bg-white/80 backdrop-blur-md">
-      <div className="px-4 py-3">
-        {/* Quick nav links */}
-        <div className="flex items-center justify-center gap-4 text-xs">
-          <button onClick={() => navigate("/")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Beranda</button>
-          <span className="text-slate-300">|</span>
-          <button onClick={() => navigate("/dashboard")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Dashboard</button>
-          <span className="text-slate-300">|</span>
-          <button onClick={() => navigate("/profile")} className="text-emerald-600 hover:text-emerald-800 font-medium transition-colors">Pengaturan</button>
-        </div>
-        {/* Copyright */}
-        <p className="text-center text-[10px] text-slate-400 mt-1.5">
-          &copy; {currentYear} Al-Muktamar. All rights reserved.
-        </p>
-      </div>
-    </footer>
-  );
-
   return (
     <div className="flex h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       {/* Desktop sidebar */}
@@ -211,7 +191,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         </main>
 
         {/* Sticky footer (mobile only) */}
-        {footer}
+        <div className="lg:hidden">
+          <Footer />
+        </div>
       </div>
     </div>
   );

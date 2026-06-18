@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { BeforeInstallPromptEvent } from "@/types";
+import Footer from "@/components/Footer";
 import {
   LayoutDashboard,
   Users,
@@ -141,6 +142,9 @@ export default function Home() {
             </Link>
           ))}
         </nav>
+
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );
