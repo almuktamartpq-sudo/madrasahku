@@ -12,7 +12,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import type { MunawibAttendance } from "@/types";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDate } from "@/lib/utils";
 
 const statCardBase = "rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm";
 const statIconBase = "flex h-10 w-10 items-center justify-center rounded-xl";
@@ -88,7 +88,7 @@ export default function DashboardPage() {
 
   // Absensi Santri Hari Ini
   const todaysAttendance = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDate();
     const todayData = filteredAttendance.filter((a) => a.date === today);
     return {
       hadir: todayData.filter((a) => a.status === "hadir").length,
@@ -115,7 +115,7 @@ export default function DashboardPage() {
 
   // Absensi Guru Hari Ini (admin only)
   const todaysTeacherAttendance = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDate();
     const data = teacherAttendance.filter((a) => a.date === today);
     return {
       hadir: data.filter((a) => a.status === "hadir").length,
@@ -128,7 +128,7 @@ export default function DashboardPage() {
 
   // Absensi Munawib Hari Ini (admin only)
   const todaysMunawibAttendance = useMemo(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDate();
     const data = munawibAttendance.filter((a) => a.date === today);
     return {
       hadir: data.filter((a) => a.status === "hadir").length,
@@ -168,7 +168,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Dashboard</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Dashboard</h1>
           <p className="text-sm text-emerald-600 mt-0.5">
             Selamat datang, {user?.name}. Ringkasan data sekolah hari ini.
           </p>

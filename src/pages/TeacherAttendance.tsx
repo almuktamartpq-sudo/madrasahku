@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDate } from "@/lib/utils";
 import {
   isOffDay,
   isHoliday,
@@ -28,9 +28,9 @@ import {
   getHolidayDates,
   getTodayHolidayNotice,
   getUpcomingHolidayNotice,
-  addCustomHoliday,
   OFF_DAY_NAME,
 } from "@/data/holidays";
+import HolidayDialog from "@/components/HolidayDialog";
 
 type AttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 
@@ -53,8 +53,8 @@ interface UnifiedPerson {
 export default function TeacherAttendancePage() {
   const { user } = useAuth();
   const { teacherAttendance, profiles, fetchAll } = useAppStore();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-  const today = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+  const today = getLocalDate();
   const [search, setSearch] = useState("");
   const [keteranganDialog, setKeteranganDialog] = useState<{ personId: string; personType: "guru" | "munawib"; status: AttendanceStatus } | null>(null);
   const [keteranganInput, setKeteranganInput] = useState("");
@@ -153,14 +153,8 @@ export default function TeacherAttendancePage() {
     if (upcoming && !todayNotice) toast.info(`Libur mendatang: ${upcoming}`, { duration: 4000 });
   }, []);
 
-  // Liburkan handler (admin only)
-  const handleLiburkan = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const holidayName = `Libur ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`;
-    addCustomHoliday(todayStr, holidayName);
-    toast.success(`Tanggal ${todayStr} ditandai sebagai hari libur`);
-    window.location.reload();
-  };
+  // Holiday dialog state
+  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
 
   const calendarGrid = useMemo(() => {
     const { year, month } = calMonth;
@@ -384,8 +378,8 @@ export default function TeacherAttendancePage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensi Guru & Munawib</h1>
           <div className="flex gap-2">
             {user?.role === "admin" && (
-              <Button onClick={handleLiburkan} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
-                <Palmtree className="mr-2 h-4 w-4" /> Liburkan Hari Ini
+              <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                <Palmtree className="mr-2 h-4 w-4" /> Kelola Libur
               </Button>
             )}
             {!allHaveRecords && (
@@ -409,7 +403,7 @@ export default function TeacherAttendancePage() {
         )}
 
         {/* Date & Search */}
-        <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
+        <Card className="border-emerald-200 bg-white/80 shadow-lg overflow-visible">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative" ref={calRef}>
@@ -423,7 +417,7 @@ export default function TeacherAttendancePage() {
                 </button>
 
                 {calOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-2xl border border-emerald-200 bg-white shadow-lg p-4">
+                  <div className="absolute left-0 top-full mt-1 z-[9999] w-72 rounded-2xl border border-emerald-200 bg-white shadow-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <button
                         onClick={() => setCalMonth((p) => p.month === 0 ? { year: p.year - 1, month: 11 } : { ...p, month: p.month - 1 })}
@@ -449,6 +443,7 @@ export default function TeacherAttendancePage() {
                         if (cell.blank) return <div key={i} />;
                         const isSelected = cell.date === selectedDate;
                         const hasAtt = datesWithAttendance.has(cell.date);
+                        const isFuture = cell.date > today;
                         const isThursday = new Date(cell.date).getDay() === 4;
                         const holiday = getHoliday(cell.date);
                         const isNonOp = isThursday || !!holiday;
@@ -464,7 +459,7 @@ export default function TeacherAttendancePage() {
                               isFuture
                                 ? "text-emerald-200 cursor-not-allowed"
                                 : isNonOp
-                                ? "bg-red-50 text-red-400 cursor-not-allowed line-through"
+                                ? "bg-red-100 text-red-500 cursor-not-allowed font-medium"
                                 : isSelected
                                 ? "bg-emerald-700 text-white"
                                 : hasAtt
@@ -620,6 +615,9 @@ export default function TeacherAttendancePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Holiday Management Dialog */}
+      <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
     </div>
   );
 }

@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDate } from "@/lib/utils";
 
 const gradeTypeConfig: Record<string, { label: string; color: string }> = {
   tamrin: { label: "Tamrin", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -55,7 +55,7 @@ export default function GradesPage() {
     type: "tamrin",
     score: 80,
     semester: "1",
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDate(),
     kelas_id: "",
     student_id: "",
   });
@@ -156,7 +156,7 @@ export default function GradesPage() {
       type: newGrade.type ?? "tamrin",
       score: newGrade.score ?? 80,
       semester: newGrade.semester ?? "1",
-      date: newGrade.date ?? new Date().toISOString().split("T")[0],
+      date: newGrade.date ?? getLocalDate(),
     };
     const saved = await createGrade(grade);
     setGrades((prev) => [saved, ...prev]);
@@ -166,7 +166,7 @@ export default function GradesPage() {
       type: "tamrin",
       score: 80,
       semester: "1",
-      date: new Date().toISOString().split("T")[0],
+      date: getLocalDate(),
       kelas_id: "",
       student_id: "",
     });
@@ -276,36 +276,37 @@ export default function GradesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-emerald-100 bg-emerald-50/50">
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Santri</th>
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Kelas</th>
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Tipe</th>
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Nilai</th>
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Semester</th>
-                <th className="text-left py-3.5 px-4 font-medium text-emerald-600">Tanggal</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600 w-10">No.</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600">Tgl</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600 min-w-[140px]">Nama</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600">Kls</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600">Tipe</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600">Nilai</th>
+                <th className="text-left py-3 px-3 font-medium text-emerald-600">Smt</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 60).map((g) => (
+              {filtered.slice(0, 60).map((g, idx) => {
+                const d = new Date(g.date);
+                const tgl = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear().toString().slice(-2)}`;
+                return (
                 <tr key={g.id} className="border-b border-emerald-50 hover:bg-emerald-50/50 transition-colors">
-                  <td className="py-3 px-4">
-                    <p className="font-medium text-emerald-800">{getStudentName(g.student_id)}</p>
-                    <p className="text-xs text-emerald-400">{getStudentKelas(g.student_id)}</p>
-                  </td>
-                  <td className="py-3 px-4 text-emerald-600">{getKelasName(g.kelas_id ?? "")}</td>
-                  <td className="py-3 px-4">
+                  <td className="py-2.5 px-3 text-emerald-500">{idx + 1}</td>
+                  <td className="py-2.5 px-3 text-emerald-600 text-xs whitespace-nowrap">{tgl}</td>
+                  <td className="py-2.5 px-3 font-medium text-emerald-800">{getStudentName(g.student_id)}</td>
+                  <td className="py-2.5 px-3 text-emerald-600 text-xs">{getKelasName(g.kelas_id ?? "")}</td>
+                  <td className="py-2.5 px-3">
                     <Badge className={cn("text-xs", gradeTypeConfig[g.type].color)}>
                       {gradeTypeConfig[g.type].label}
                     </Badge>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className={cn("font-bold text-lg", getScoreColor(g.score))}>{g.score}</span>
+                  <td className="py-2.5 px-3">
+                    <span className={cn("font-bold", getScoreColor(g.score))}>{g.score}</span>
                   </td>
-                  <td className="py-3 px-4 text-emerald-500">Semester {g.semester}</td>
-                  <td className="py-3 px-4 text-emerald-500 text-xs">
-                    {new Date(g.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                  </td>
+                  <td className="py-2.5 px-3 text-emerald-500 text-center">{g.semester}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -399,7 +400,7 @@ export default function GradesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative z-50">
                 <div className="flex items-center gap-2">
                   <Label className="text-xs text-emerald-600">Tanggal</Label>
                   <Calendar

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, Save, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDate } from "@/lib/utils";
 import {
   isOffDay,
   isHoliday,
@@ -27,8 +27,8 @@ const selfStatusOptions = [
 
 export default function MyAttendance() {
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-  const today = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(getLocalDate());
+  const today = getLocalDate();
   const [selectedStatus, setSelectedStatus] = useState("izin");
   const [keterangan, setKeterangan] = useState("");
   const [myRecords, setMyRecords] = useState<any[]>([]);
@@ -229,7 +229,7 @@ export default function MyAttendance() {
               </button>
 
               {calOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-2xl border border-emerald-200 bg-white shadow-lg p-4">
+                <div className="absolute left-0 top-full mt-1 z-[9999] w-72 rounded-2xl border border-emerald-200 bg-white shadow-2xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <button
                       onClick={() => setCalMonth((p) => p.month === 0 ? { year: p.year - 1, month: 11 } : { ...p, month: p.month - 1 })}
@@ -273,7 +273,7 @@ export default function MyAttendance() {
                             isDisabled
                               ? "text-emerald-200 cursor-not-allowed"
                               : isNonOp
-                              ? "bg-red-50 text-red-400 cursor-not-allowed line-through"
+                              ? "bg-red-100 text-red-500 cursor-not-allowed font-medium"
                               : isSelected
                               ? "bg-emerald-700 text-white"
                               : hasAtt

@@ -5,25 +5,47 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    // Validate required fields
+    if (!email.trim()) {
+      setError('Email wajib diisi');
+      document.getElementById('email')?.focus();
+      return;
+    }
+    if (!password.trim()) {
+      setError('Password wajib diisi');
+      document.getElementById('password')?.focus();
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email, password);
       toast.success('Login berhasil');
       navigate('/');
-    } catch (error: any) {
-      toast.error('Login gagal', { description: error.message });
+    } catch (err: any) {
+      const msg = err?.message ?? '';
+      if (msg.includes('Invalid login credentials') || msg.includes('invalid_grant')) {
+        setError('Email atau password salah');
+      } else if (msg.includes('Email not confirmed')) {
+        setError('Email belum dikonfirmasi');
+      } else {
+        setError(msg || 'Login gagal, coba lagi');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,6 +98,14 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
+              {/* Error Alert */}
+              {error && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-in fade-in">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email</Label>
                 <Input

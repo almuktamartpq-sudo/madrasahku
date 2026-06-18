@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { getLocalDate } from "@/lib/utils";
 import { fetchStudents, createStudent, updateStudent, deleteStudent, uploadPhoto, deletePhoto, fetchParentStudentIds, fetchKelas, fetchPelanggaran } from "@/data/store";
 import type { Student, Kelas, Pelanggaran } from "@/types";
 import { toast } from "sonner";
@@ -55,7 +56,7 @@ const initialStudent: Student = {
   kelas_id: "",
   alamat: "",
   phone: "",
-  tanggal_masuk: new Date().toISOString().split("T")[0],
+  tanggal_masuk: getLocalDate(),
   created_at: "",
 };
 
@@ -261,11 +262,11 @@ export default function StudentsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
-      <div className="space-y-6">
+      <div className="container mx-auto p-4 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Data Santri</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Data Santri</h1>
             <p className="text-sm text-emerald-600 mt-0.5">
               {filtered.length} santri terdaftar
             </p>

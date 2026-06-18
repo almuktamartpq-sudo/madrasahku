@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, getLocalDate } from "@/lib/utils";
 import {
   isOffDay,
   isHoliday,
@@ -42,9 +42,9 @@ import {
   getHolidayDates,
   getTodayHolidayNotice,
   getUpcomingHolidayNotice,
-  addCustomHoliday,
   OFF_DAY_NAME,
 } from "@/data/holidays";
+import HolidayDialog from "@/components/HolidayDialog";
 
 const statusConfig: Record<AttendanceStatus, { label: string; icon: React.ElementType; color: string }> = {
   hadir: { label: "Hadir", icon: CheckCircle2, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -70,10 +70,10 @@ export default function AttendancePage() {
   const [kelasList, setKelasList] = useState<Kelas[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split("T")[0]);
+  const [dateFilter, setDateFilter] = useState(getLocalDate());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newAttendance, setNewAttendance] = useState<Partial<Attendance>>({
-    date: new Date().toISOString().split("T")[0],
+    date: getLocalDate(),
     status: "hadir",
   });
   const [keteranganDialog, setKeteranganDialog] = useState<{ id: string; status: AttendanceStatus } | null>(null);
@@ -87,7 +87,7 @@ export default function AttendancePage() {
 
   const isOrangtua = user?.role === "orangtua";
   const isGuru = user?.role === "guru";
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDate();
 
   const visibleStudents = useMemo(() => {
     if (isOrangtua && parentStudentIds.length > 0) {
@@ -148,15 +148,8 @@ export default function AttendancePage() {
     if (upcoming && !todayNotice) toast.info(`Libur mendatang: ${upcoming}`, { duration: 4000 });
   }, []);
 
-  // Liburkan handler (admin only)
-  const handleLiburkan = () => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const holidayName = `Libur ${new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`;
-    addCustomHoliday(todayStr, holidayName);
-    toast.success(`Tanggal ${todayStr} ditandai sebagai hari libur`);
-    // Force re-render holiday dates
-    window.location.reload();
-  };
+  // Holiday dialog state
+  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
 
   const calendarGrid = useMemo(() => {
     const { year, month } = calMonth;
@@ -242,7 +235,7 @@ export default function AttendancePage() {
     const saved = await createAttendance(record);
     setAttendance((prev) => [saved, ...prev]);
     setDialogOpen(false);
-    setNewAttendance({ date: new Date().toISOString().split("T")[0], status: "hadir" });
+    setNewAttendance({ date: getLocalDate(), status: "hadir" });
   };
 
   const handleBatchAbsensi = async () => {
@@ -287,8 +280,8 @@ export default function AttendancePage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensi Santri</h1>
           <div className="flex gap-2">
             {user?.role === "admin" && (
-              <Button onClick={handleLiburkan} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
-                <Palmtree className="mr-2 h-4 w-4" /> Liburkan Hari Ini
+              <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
+                <Palmtree className="mr-2 h-4 w-4" /> Kelola Libur
               </Button>
             )}
             {canAdd && !allHaveRecords && (
@@ -312,7 +305,7 @@ export default function AttendancePage() {
         )}
 
         {/* Date & Search */}
-        <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
+        <Card className="border-emerald-200 bg-white/80 shadow-lg overflow-visible">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative" ref={calRef}>
@@ -325,7 +318,7 @@ export default function AttendancePage() {
                   <span>{new Date(dateFilter).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>
                 </button>
                 {calOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 w-72 rounded-2xl border border-emerald-200 bg-white shadow-lg p-4">
+                  <div className="absolute left-0 top-full mt-1 z-[9999] w-72 rounded-2xl border border-emerald-200 bg-white shadow-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <button onClick={() => setCalMonth((p) => p.month === 0 ? { year: p.year - 1, month: 11 } : { ...p, month: p.month - 1 })} className="h-8 w-8 rounded-lg hover:bg-emerald-100 flex items-center justify-center text-emerald-600">‹</button>
                       <p className="text-sm font-semibold text-emerald-900">{calMonthLabel}</p>
@@ -339,6 +332,7 @@ export default function AttendancePage() {
                         if (cell.blank) return <div key={i} />;
                         const isSelected = cell.date === dateFilter;
                         const hasAtt = datesWithAttendance.has(cell.date);
+                        const isFuture = cell.date > today;
                         const isThursday = new Date(cell.date).getDay() === 4;
                         const holiday = getHoliday(cell.date);
                         const isNonOp = isThursday || !!holiday;
@@ -347,7 +341,7 @@ export default function AttendancePage() {
                           <button key={i} disabled={isDisabled} onClick={() => { setDateFilter(cell.date); setCalOpen(false); }}
                             title={holiday ? holiday.name : isThursday ? `${OFF_DAY_NAME} - Libur` : undefined}
                             className={cn("h-8 w-8 rounded-lg text-xs font-medium transition-colors flex items-center justify-center mx-auto",
-                              isFuture ? "text-emerald-200 cursor-not-allowed" : isNonOp ? "bg-red-50 text-red-400 cursor-not-allowed line-through" : isSelected ? "bg-emerald-700 text-white" : hasAtt ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "text-emerald-600 hover:bg-emerald-100"
+                              isFuture ? "text-emerald-200 cursor-not-allowed" : isNonOp ? "bg-red-100 text-red-500 cursor-not-allowed font-medium" : isSelected ? "bg-emerald-700 text-white" : hasAtt ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "text-emerald-600 hover:bg-emerald-100"
                             )}
                           >{cell.day}</button>
                         );
@@ -557,6 +551,9 @@ export default function AttendancePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Holiday Management Dialog */}
+      <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
     </div>
   );
 }

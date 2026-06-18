@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getLocalDate } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -41,7 +42,7 @@ const initialInput: StudentInput = {
   name: "",
   alamat: "",
   phone: "",
-  tanggal_masuk: new Date().toISOString().split("T")[0],
+  tanggal_masuk: getLocalDate(),
   kelas_id: null,
 };
 

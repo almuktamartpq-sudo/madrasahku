@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { getLocalDate } from '@/lib/utils';
 import type { Role, Student, Kelas, Mapel, Grade, Attendance, AttendanceStatus, Payment, PaymentType, Profile, TeacherAttendance, MunawibMapel, MunawibAttendance, AttendanceLog, Pelanggaran, ParentStudent } from '@/types';
 
 // Accounts
@@ -353,7 +354,7 @@ export async function activatePaymentType(paymentTypeId: string): Promise<number
       type: pt.nama,
       amount: Number(pt.jumlah),
       status: 'belum_lunas',
-      due_date: new Date().toISOString().split('T')[0],
+      due_date: getLocalDate(),
       bulan: new Date().getMonth() + 1,
       tahun: new Date().getFullYear(),
     }));
@@ -376,7 +377,7 @@ export async function markStudentPaid(paymentId: string): Promise<void> {
     .from('payments')
     .update({ 
       status: 'lunas', 
-      paid_date: new Date().toISOString().split('T')[0] 
+      paid_date: getLocalDate() 
     })
     .eq('id', paymentId);
   if (error) throw error;
@@ -389,7 +390,7 @@ export async function markAllPaidForType(typeName: string): Promise<void> {
     .from('payments')
     .update({ 
       status: 'lunas', 
-      paid_date: new Date().toISOString().split('T')[0] 
+      paid_date: getLocalDate() 
     })
     .eq('type', typeName)
     .eq('status', 'belum_lunas');

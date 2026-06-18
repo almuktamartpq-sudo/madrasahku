@@ -115,8 +115,9 @@ export default function MunawibPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
+        <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Data Munawib</h1>
-
+        </div>
         {/* Munawib List */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-6">

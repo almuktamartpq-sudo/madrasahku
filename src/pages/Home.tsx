@@ -19,6 +19,7 @@ import {
   Download,
   AlertTriangle,
   HeartHandshake,
+  DoorOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -46,7 +47,7 @@ const allMenuItems: MenuItem[] = [
   { label: "Santri", icon: Users, href: "/students", roles: ["admin", "guru", "munawib", "orangtua"], iconColor: "#0891b2", bgColor: "#cffafe" },
   { label: "Pelanggaran", icon: AlertTriangle, href: "/pelanggaran", roles: ["admin", "guru", "munawib", "orangtua"], iconColor: "#ea580c", bgColor: "#fff7ed" },
   { label: "Orang Tua", icon: HeartHandshake, href: "/orangtua", roles: ["admin", "guru", "munawib"], iconColor: "#e11d48", bgColor: "#ffe4e6" },
-  { label: "Kelas", icon: Library, href: "/kelas", roles: ["admin"], iconColor: "#0d9488", bgColor: "#ccfbf1" },
+  { label: "Kelas", icon: DoorOpen, href: "/kelas", roles: ["admin"], iconColor: "#0d9488", bgColor: "#ccfbf1" },
   { label: "Mapel", icon: BookOpen, href: "/mapel", roles: ["admin"], iconColor: "#4f46e5", bgColor: "#e0e7ff" },
   { label: "Nilai", icon: GraduationCap, href: "/grades", roles: ["admin", "guru", "munawib", "orangtua"], iconColor: "#d97706", bgColor: "#fef3c7" },
   { label: "Absensi Santri", icon: ClipboardCheck, href: "/attendance", roles: ["admin", "guru", "munawib", "orangtua"], iconColor: "#06b6d4", bgColor: "#cffafe" },
@@ -89,9 +90,10 @@ export default function Home() {
   const menuItems = allMenuItems.filter((item) => user && item.roles.includes(user.role));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50 lg:hidden">
-      {/* Mobile Home Screen */}
-      <div className="bg-white border-b border-slate-200">
+    <>
+    {/* Mobile Home Screen */}
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50 lg:hidden">
+      <div className="flex-1 bg-white border-b border-slate-200">
         {/* Header */}
         <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 text-white shadow-lg">
           <div className="flex items-center gap-3">
@@ -108,7 +110,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* User bar moved to top */}
+        {/* User bar */}
         <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-t border-amber-200">
           <Avatar className="h-10 w-10 border-2 border-amber-300 ring-2 ring-amber-100">
             <AvatarFallback className="bg-gradient-to-br from-emerald-600 to-emerald-700 text-white text-sm font-bold">
@@ -124,7 +126,7 @@ export default function Home() {
           </Button>
         </div>
 
-        {/* Grid Menu: 3 columns with modern emerald-gold design */}
+        {/* Grid Menu */}
         <nav className="grid grid-cols-3 gap-3 p-4">
           {menuItems.map((item) => (
             <Link
@@ -143,10 +145,37 @@ export default function Home() {
           ))}
         </nav>
 
-        {/* Footer */}
-        <Footer />
+        {/* Footer - sticky bottom */}
+        <div className="mt-auto">
+          <Footer />
+        </div>
       </div>
     </div>
+
+    {/* Desktop Home Screen */}
+    <div className="hidden lg:block min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Beranda</h1>
+          <p className="text-sm text-emerald-600 mt-1">Selamat datang, {user?.name}. Pilih menu di bawah.</p>
+        </div>
+        <nav className="grid grid-cols-4 xl:grid-cols-5 gap-4">
+          {menuItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className="flex items-center gap-4 rounded-2xl px-5 py-4 bg-white/70 backdrop-blur-sm border border-white/60 shadow-md hover:shadow-xl hover:bg-white/90 transition-all duration-300 group"
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-amber-500 text-white shadow-lg group-hover:scale-110 transition-transform">
+                <item.icon className="h-6 w-6" />
+              </div>
+              <span className="font-semibold text-emerald-800 group-hover:text-emerald-600 transition-colors">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </div>
+    </>
   );
 }
 

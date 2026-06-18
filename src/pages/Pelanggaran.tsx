@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { useAppStore } from "@/data/store";
 import { fetchParentStudentIds } from "@/data/store";
+import { getLocalDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +49,7 @@ export default function PelanggaranPage() {
   const [parentStudentIds, setParentStudentIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     student_id: "",
-    tanggal: new Date().toISOString().split("T")[0],
+    tanggal: getLocalDate(),
     jenis: "ringan" as "ringan" | "sedang" | "berat",
     kartu: "kuning" as "kuning" | "oranye" | "merah",
     deskripsi: "",
@@ -107,7 +108,7 @@ export default function PelanggaranPage() {
     setEditing(null);
     setForm({
       student_id: students[0]?.id ?? "",
-      tanggal: new Date().toISOString().split("T")[0],
+      tanggal: getLocalDate(),
       jenis: "ringan",
       kartu: "kuning",
       deskripsi: "",
