@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree } from "lucide-react";
+import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn, getLocalDate } from "@/lib/utils";
 import {
@@ -34,11 +34,12 @@ import HolidayDialog from "@/components/HolidayDialog";
 
 type AttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
 
-const statusConfig: Record<AttendanceStatus, { label: string; icon: React.ElementType; color: string }> = {
+const statusConfig: Record<AttendanceStatus | "belum_absen", { label: string; icon: React.ElementType; color: string }> = {
   hadir: { label: "Hadir", icon: CheckCircle2, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   izin: { label: "Izin", icon: FileText, color: "bg-amber-50 text-amber-700 border-amber-200" },
   sakit: { label: "Sakit", icon: AlertTriangle, color: "bg-blue-50 text-blue-700 border-blue-200" },
   alpha: { label: "Alpha", icon: Clock, color: "bg-red-50 text-red-700 border-red-200" },
+  belum_absen: { label: "Belum absen", icon: Clock, color: "bg-slate-50 text-slate-500 border-slate-200" },
 };
 
 interface UnifiedPerson {
@@ -533,11 +534,12 @@ export default function TeacherAttendancePage() {
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700 min-w-[180px]">Nama</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Status</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Keterangan</th>
+                      {user?.role === "admin" && <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {dayView.map(({ person, record }, index) => {
-                      const currentStatus = (record?.status as AttendanceStatus) || "hadir";
+                      const currentStatus = (record?.status as AttendanceStatus) || null;
                       
                       // Format tanggal: dd/mm/yy
                       const formatDate = (dateStr: string) => {
@@ -561,20 +563,40 @@ export default function TeacherAttendancePage() {
                             </div>
                           </td>
                           <td className="py-3 px-4">
-                            <Select 
-                              value={currentStatus} 
-                              onValueChange={(value: AttendanceStatus) => handleUpdateStatus(person, value)}
-                            >
-                              <SelectTrigger className="h-9 w-32 text-sm border-emerald-200 focus:border-emerald-400">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="hadir">Hadir</SelectItem>
-                                <SelectItem value="izin">Izin</SelectItem>
-                                <SelectItem value="sakit">Sakit</SelectItem>
-                                <SelectItem value="alpha">Alpha</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {!record ? (
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className={cn("gap-1", statusConfig.belum_absen.color)}>
+                                  <Clock className="h-3 w-3" />
+                                  Belum absen
+                                </Badge>
+                                <Select onValueChange={(value: AttendanceStatus) => handleUpdateStatus(person, value)}>
+                                  <SelectTrigger className="h-9 w-32 text-sm border-emerald-200 focus:border-emerald-400">
+                                    <SelectValue placeholder="Pilih..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="hadir">Hadir</SelectItem>
+                                    <SelectItem value="izin">Izin</SelectItem>
+                                    <SelectItem value="sakit">Sakit</SelectItem>
+                                    <SelectItem value="alpha">Alpha</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ) : (
+                              <Select 
+                                value={currentStatus ?? "hadir"} 
+                                onValueChange={(value: AttendanceStatus) => handleUpdateStatus(person, value)}
+                              >
+                                <SelectTrigger className="h-9 w-32 text-sm border-emerald-200 focus:border-emerald-400">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="hadir">Hadir</SelectItem>
+                                  <SelectItem value="izin">Izin</SelectItem>
+                                  <SelectItem value="sakit">Sakit</SelectItem>
+                                  <SelectItem value="alpha">Alpha</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             {record?.keterangan ? (
@@ -583,6 +605,33 @@ export default function TeacherAttendancePage() {
                               <span className="text-sm text-emerald-400">-</span>
                             )}
                           </td>
+                          {user?.role === "admin" && (
+                            <td className="py-3 px-4">
+                              {record && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      if (person.type === "guru") {
+                                        await api.deleteTeacherAttendance(record.id);
+                                      } else {
+                                        await api.deleteMunawibAttendance(record.id);
+                                      }
+                                      toast.success("Absensi dihapus");
+                                      fetchAll();
+                                      loadMunawibAttendance();
+                                    } catch (err: any) {
+                                      toast.error("Gagal hapus", { description: err.message });
+                                    }
+                                  }}
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </td>
+                          )}
                         </tr>
                       );
                     })}

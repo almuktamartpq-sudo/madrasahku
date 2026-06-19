@@ -206,6 +206,12 @@ export async function updateAttendance(id: string, status: AttendanceStatus): Pr
   if (error) throw error;
 }
 
+export async function deleteAttendance(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('attendance').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // Teacher Attendance
 export async function fetchTeacherAttendance(): Promise<TeacherAttendance[]> {
   if (!isSupabaseConfigured) return [];
@@ -264,6 +270,18 @@ export async function createTeacherAttendanceBatch(records: Omit<TeacherAttendan
   
   if (error) throw error;
   return data || [];
+}
+
+export async function deleteTeacherAttendance(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('teacher_attendance').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteMunawibAttendance(id: string): Promise<void> {
+  if (!isSupabaseConfigured) return;
+  const { error } = await supabase.from('munawib_attendance').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // Payments

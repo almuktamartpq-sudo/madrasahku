@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchAttendance, createAttendance, createAttendanceBatch, updateAttendance, fetchStudents, fetchParentStudentIds, fetchProfileKelasId, fetchKelas } from "@/data/store";
+import * as api from "@/data/api";
 import type { Attendance, AttendanceStatus, Kelas } from "@/types";
 import { toast } from "sonner";
 import {
@@ -14,6 +15,7 @@ import {
   Calendar,
   CalendarDays,
   Palmtree,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -436,15 +438,35 @@ export default function AttendancePage() {
                             </td>
                             {canAdd && (
                               <td className="py-3 px-4">
-                                <Select value={a.status} onValueChange={(v) => handleUpdateStatus(a.id, v as AttendanceStatus)}>
-                                  <SelectTrigger className="h-9 w-32 text-sm border-emerald-200 focus:border-emerald-400"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="hadir">Hadir</SelectItem>
-                                    <SelectItem value="izin">Izin</SelectItem>
-                                    <SelectItem value="sakit">Sakit</SelectItem>
-                                    <SelectItem value="alpha">Alpha</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                <div className="flex items-center gap-1">
+                                  <Select value={a.status} onValueChange={(v) => handleUpdateStatus(a.id, v as AttendanceStatus)}>
+                                    <SelectTrigger className="h-9 w-32 text-sm border-emerald-200 focus:border-emerald-400"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="hadir">Hadir</SelectItem>
+                                      <SelectItem value="izin">Izin</SelectItem>
+                                      <SelectItem value="sakit">Sakit</SelectItem>
+                                      <SelectItem value="alpha">Alpha</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {user?.role === "admin" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={async () => {
+                                        try {
+                                          await api.deleteAttendance(a.id);
+                                          setAttendance((prev) => prev.filter((x) => x.id !== a.id));
+                                          toast.success("Absensi dihapus");
+                                        } catch (err: any) {
+                                          toast.error("Gagal hapus", { description: err.message });
+                                        }
+                                      }}
+                                      className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
                               </td>
                             )}
                           </tr>
