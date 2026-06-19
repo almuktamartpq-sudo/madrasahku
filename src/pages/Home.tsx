@@ -93,7 +93,7 @@ export default function Home() {
     <>
     {/* Mobile Home Screen */}
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50 lg:hidden">
-      <div className="flex-1 bg-white border-b border-slate-200">
+      <div className="flex-1 bg-white">
         {/* Header */}
         <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 text-white shadow-lg">
           <div className="flex items-center gap-3">
@@ -144,12 +144,10 @@ export default function Home() {
             </Link>
           ))}
         </nav>
-
-        {/* Footer - sticky bottom */}
-        <div className="mt-auto">
-          <Footer />
-        </div>
       </div>
+
+      {/* Footer - always at bottom */}
+      <Footer />
     </div>
 
     {/* Desktop Home Screen */}

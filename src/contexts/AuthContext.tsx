@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { useAppStore } from '@/data/store';
 import type { Role, Profile } from '@/types';
 
 interface User {
@@ -64,6 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: data.name,
         role: data.role as Role,
       });
+
+      // Preload all data after successful profile load
+      useAppStore.getState().fetchAll();
     } catch (error) {
       console.error('Failed to load profile:', error);
       setUser({ id: userId, email, name: email.split('@')[0], role: 'admin' });
