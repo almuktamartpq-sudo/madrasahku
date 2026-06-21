@@ -52,7 +52,32 @@
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
   }
+
+  /* iOS Safari: prevent zoom on input focus (font-size >= 16px) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* iOS safe area insets for notch/home indicator */
+  html {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(to right, #047857, #b45309);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
 }
 
 /* Modern emerald-gold design */

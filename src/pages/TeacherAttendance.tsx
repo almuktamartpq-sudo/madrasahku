@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { getCrudEnabled } from "@/pages/Settings";
 import { cn, getLocalDate } from "@/lib/utils";
 import {
   isOffDay,
@@ -32,13 +33,13 @@ import {
 } from "@/data/holidays";
 import HolidayDialog from "@/components/HolidayDialog";
 
-type AttendanceStatus = "hadir" | "izin" | "sakit" | "alpha";
+type AttendanceStatus = "hadir" | "izin" | "sakit" | "alfa";
 
 const statusConfig: Record<AttendanceStatus | "belum_absen", { label: string; icon: React.ElementType; color: string }> = {
   hadir: { label: "Hadir", icon: CheckCircle2, color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
   izin: { label: "Izin", icon: FileText, color: "bg-amber-50 text-amber-700 border-amber-200" },
   sakit: { label: "Sakit", icon: AlertTriangle, color: "bg-blue-50 text-blue-700 border-blue-200" },
-  alpha: { label: "Alpha", icon: Clock, color: "bg-red-50 text-red-700 border-red-200" },
+  alfa: { label: "Alpha", icon: Clock, color: "bg-red-50 text-red-700 border-red-200" },
   belum_absen: { label: "Belum absen", icon: Clock, color: "bg-slate-50 text-slate-500 border-slate-200" },
 };
 
@@ -216,7 +217,7 @@ export default function TeacherAttendancePage() {
       hadir: records.filter((r) => r?.status === "hadir").length,
       izin: records.filter((r) => r?.status === "izin").length,
       sakit: records.filter((r) => r?.status === "sakit").length,
-      alpha: records.filter((r) => !r || r.status === "alpha").length,
+      alfa: records.filter((r) => !r || r.status === "alfa").length,
       total: dayView.length,
       guru: allPeople.filter((p) => p.type === "guru").length,
       munawib: allPeople.filter((p) => p.type === "munawib").length,
@@ -372,18 +373,20 @@ export default function TeacherAttendancePage() {
     }
   };
 
+  const isAdmin = user?.role === "admin" && getCrudEnabled("teacher-attendance");
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensi Guru & Munawib</h1>
+          <h1 className="text-3xl font-bold gradient-text">Absensi Guru & Munawib</h1>
           <div className="flex gap-2">
-            {user?.role === "admin" && (
+            {isAdmin && (
               <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                 <Palmtree className="mr-2 h-4 w-4" /> Kelola Libur
               </Button>
             )}
-            {!allHaveRecords && (
+            {isAdmin && !allHaveRecords && (
               <Button onClick={handleBatchAbsensi} className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg">
                 <ClipboardCheck className="mr-2 h-4 w-4" /> Absen Semua Hadir
               </Button>
@@ -511,7 +514,7 @@ export default function TeacherAttendancePage() {
             <p className="text-xs text-emerald-700">Sakit</p>
           </CardContent></Card>
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alpha}</div>
+            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
             <p className="text-xs text-emerald-700">Belum absen</p>
           </CardContent></Card>
         </div>
@@ -534,7 +537,7 @@ export default function TeacherAttendancePage() {
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700 min-w-[180px]">Nama</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Status</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Keterangan</th>
-                      {user?.role === "admin" && <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Aksi</th>}
+                      {isAdmin && <th className="text-left py-3 px-4 text-sm font-semibold text-emerald-700">Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -577,7 +580,7 @@ export default function TeacherAttendancePage() {
                                     <SelectItem value="hadir">Hadir</SelectItem>
                                     <SelectItem value="izin">Izin</SelectItem>
                                     <SelectItem value="sakit">Sakit</SelectItem>
-                                    <SelectItem value="alpha">Alpha</SelectItem>
+                                    <SelectItem value="alfa">Alpha</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -593,7 +596,7 @@ export default function TeacherAttendancePage() {
                                   <SelectItem value="hadir">Hadir</SelectItem>
                                   <SelectItem value="izin">Izin</SelectItem>
                                   <SelectItem value="sakit">Sakit</SelectItem>
-                                  <SelectItem value="alpha">Alpha</SelectItem>
+                                  <SelectItem value="alfa">Alpha</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -605,7 +608,7 @@ export default function TeacherAttendancePage() {
                               <span className="text-sm text-emerald-400">-</span>
                             )}
                           </td>
-                          {user?.role === "admin" && (
+                          {isAdmin && (
                             <td className="py-3 px-4">
                               {record && (
                                 <Button

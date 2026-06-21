@@ -166,9 +166,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
-      <div className="space-y-6">
+      <div className="container mx-auto p-4 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Dashboard</h1>
+          <h1 className="text-3xl font-bold gradient-text">Dashboard</h1>
           <p className="text-sm text-emerald-600 mt-0.5">
             Selamat datang, {user?.name}. Ringkasan data sekolah hari ini.
           </p>

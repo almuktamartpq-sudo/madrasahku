@@ -20,6 +20,7 @@ import MunawibPage from "@/pages/Munawib";
 import MyAttendance from "@/pages/MyAttendance";
 import Profile from "@/pages/Profile";
 import Orangtua from "@/pages/Orangtua";
+import SettingsPage from "@/pages/Settings";
 import { Toaster } from "sonner";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -179,6 +180,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Orangtua />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SettingsPage />
             </Layout>
           </ProtectedRoute>
         }

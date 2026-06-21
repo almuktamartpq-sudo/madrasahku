@@ -22,8 +22,9 @@ import {
   AlertTriangle,
   HeartHandshake,
   ArrowLeft,
+  Settings,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -56,6 +57,7 @@ const allNavItems: NavItem[] = [
   { label: "Pembayaran", icon: CreditCard, href: "/payments", roles: ["admin", "guru", "orangtua"] },
   { label: "Absensiku", icon: CalendarDays, href: "/my-attendance", roles: ["guru", "munawib"] },
   { label: "Pengguna", icon: UserCog, href: "/profile", roles: ["admin"] },
+  { label: "Pengaturan", icon: Settings, href: "/settings", roles: ["admin"] },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
@@ -130,8 +132,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div className="border-t border-white/10 p-3">
         <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
           <Avatar className="h-9 w-9 border-2 border-white/20">
-            <AvatarFallback className="bg-emerald-500 text-white text-sm font-bold">
-              {user?.name?.charAt(0) ?? "U"}
+            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-amber-500 text-white text-xs font-bold">
+              {getInitials(user?.name)}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
@@ -161,7 +163,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
   // ============ MOBILE HEADER WITH BACK BUTTON ============
   const mobileHeader = (
-    <div className="lg:hidden flex h-14 items-center gap-3 border-b border-emerald-600/20 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 px-3 shrink-0 shadow-lg">
+    <div className="lg:hidden flex h-14 items-center gap-3 border-b border-emerald-600/20 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 px-3 shrink-0 shadow-lg sticky top-0 z-50">
       <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="h-9 w-9 hover:bg-white/20">
         <ArrowLeft className="h-5 w-5 text-white" />
       </Button>

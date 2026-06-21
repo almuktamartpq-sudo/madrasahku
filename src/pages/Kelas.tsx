@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Library, Plus, Edit, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
+import { getCrudEnabled } from "@/pages/Settings";
 import type { Kelas } from "@/types";
 
 export default function KelasPage() {
@@ -21,6 +22,7 @@ export default function KelasPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingKelas, setEditingKelas] = useState<Kelas | null>(null);
   const [formNama, setFormNama] = useState("");
+  const crudEnabled = getCrudEnabled("kelas");
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -60,21 +62,25 @@ export default function KelasPage() {
     } catch (err: any) { toast.error("Gagal menghapus", { description: err.message }); }
   };
 
+  const sortedKelas = useMemo(() => [...kelas].sort((a, b) => a.urutan - b.urutan), [kelas]);
+
   const moveKelas = async (id: string, direction: 'up' | 'down') => {
-    const currentIndex = kelas.findIndex((k) => k.id === id);
+    const currentIndex = sortedKelas.findIndex((k) => k.id === id);
     if (currentIndex === -1) return;
 
     const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-    if (nextIndex < 0 || nextIndex >= kelas.length) return;
+    if (nextIndex < 0 || nextIndex >= sortedKelas.length) return;
 
-    const current = kelas[currentIndex];
-    const next = kelas[nextIndex];
+    // Create new order array
+    const newOrder = sortedKelas.map((k) => k.id);
+    // Swap positions
+    [newOrder[currentIndex], newOrder[nextIndex]] = [newOrder[nextIndex], newOrder[currentIndex]];
 
     try {
-      await Promise.all([
-        api.updateKelas(current.id, { urutan: next.urutan }),
-        api.updateKelas(next.id, { urutan: current.urutan }),
-      ]);
+      // Update all urutan sequentially
+      await Promise.all(
+        newOrder.map((kid, idx) => api.updateKelas(kid, { urutan: idx }))
+      );
       toast.success(`Kelas ${direction === 'up' ? 'naik' : 'turun'} urutan`);
       fetchAll();
     } catch (err: any) {
@@ -86,8 +92,8 @@ export default function KelasPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Kelas</h1>
-          <Button className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg" onClick={openAdd}><Plus className="mr-2 h-4 w-4" /> Tambah Kelas</Button>
+          <h1 className="text-3xl font-bold gradient-text">Kelas</h1>
+          {crudEnabled && <Button className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg" onClick={openAdd}><Plus className="mr-2 h-4 w-4" /> Tambah Kelas</Button>}
         </div>
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-6">
@@ -98,29 +104,30 @@ export default function KelasPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {[...kelas].sort((a, b) => a.urutan - b.urutan).map((k, index) => (
+                {sortedKelas.map((k, index) => (
                   <div key={k.id} className="flex items-center gap-3 p-3 border border-emerald-200 rounded-lg hover:bg-emerald-50/50 transition-colors">
                     <GripVertical className="h-4 w-4 text-emerald-600" />
                     <div className="flex-1">
                       <p className="font-medium text-emerald-900">{k.nama}</p>
                       <p className="text-xs text-emerald-600">Urutan: {k.urutan}</p>
                     </div>
+                    {crudEnabled && (
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         disabled={index === 0}
                         onClick={() => moveKelas(k.id, 'up')}
-                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowUp className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        disabled={index === kelas.length - 1}
+                        disabled={index === sortedKelas.length - 1}
                         onClick={() => moveKelas(k.id, 'down')}
-                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="h-8 w-8 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowDown className="h-4 w-4" />
                       </Button>
@@ -129,6 +136,7 @@ export default function KelasPage() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    )}
                   </div>
                 ))}
               </div>

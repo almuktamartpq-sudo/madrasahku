@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/select";
 import { UserCheck, Search, Edit } from "lucide-react";
 import { toast } from "sonner";
+import { getInitials } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
 import type { Profile } from "@/types";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -45,6 +48,8 @@ export default function GuruPage() {
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
   }, [profiles, search]);
+
+  const { paginatedItems: paginatedGuru, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(guruList, 10);
 
   const openEdit = (guru: Profile) => {
     setEditingGuru(guru);
@@ -86,7 +91,7 @@ export default function GuruPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold gradient-text">
             {isOrangtua ? "Guru" : "Data Guru"}
           </h1>
         </div>
@@ -116,7 +121,7 @@ export default function GuruPage() {
               </div>
             ) : isOrangtua ? (
               <div className="space-y-2">
-                {guruList.map((guru) => (
+                {paginatedGuru.map((guru) => (
                   <div key={guru.id} className="flex items-center justify-between p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 transition-colors">
                     <p className="font-medium text-emerald-900">{guru.name}</p>
                     {guru.phone && (
@@ -133,12 +138,10 @@ export default function GuruPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {guruList.map((guru) => (
+                {paginatedGuru.map((guru) => (
                   <div key={guru.id} className="flex items-center gap-3 p-3 border border-emerald-200 rounded-lg hover:bg-emerald-50/30 transition-colors">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                      guru.avatar ? "bg-gradient-to-br from-emerald-500 to-amber-500" : "bg-emerald-500"
-                    }`}>
-                      {guru.name.charAt(0).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-emerald-500 to-amber-500">
+                      {getInitials(guru.name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -162,6 +165,8 @@ export default function GuruPage() {
           </CardContent>
         </Card>
 
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
+
         {/* Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={() => setShowDialog(false)}>
           <DialogContent className="border-emerald-200 bg-white/90 backdrop-blur-sm">
@@ -171,8 +176,8 @@ export default function GuruPage() {
             <div className="space-y-4">
               {editingGuru && (
                 <div className="flex items-center gap-3 p-3 bg-emerald-50/50 rounded-lg border border-emerald-200">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-r from-emerald-500 to-amber-500">
-                    {editingGuru.name.charAt(0).toUpperCase()}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-emerald-500 to-amber-500">
+                    {getInitials(editingGuru.name)}
                   </div>
                   <div>
                     <p className="font-medium text-emerald-900">{editingGuru.name}</p>

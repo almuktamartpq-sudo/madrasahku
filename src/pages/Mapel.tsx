@@ -79,7 +79,7 @@ export default function MapelPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Mata Pelajaran</h1>
+          <h1 className="text-3xl font-bold gradient-text">Mata Pelajaran</h1>
           <Button className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white shadow-md hover:shadow-lg" onClick={openAdd}><Plus className="mr-2 h-4 w-4" /> Tambah Mapel</Button>
         </div>
         {mapel.length === 0 ? (

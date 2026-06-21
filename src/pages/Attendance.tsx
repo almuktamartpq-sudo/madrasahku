@@ -4,6 +4,7 @@ import { fetchAttendance, createAttendance, createAttendanceBatch, updateAttenda
 import * as api from "@/data/api";
 import type { Attendance, AttendanceStatus, Kelas } from "@/types";
 import { toast } from "sonner";
+import { getCrudEnabled } from "@/pages/Settings";
 import {
   Search,
   CheckCircle2,
@@ -121,7 +122,7 @@ export default function AttendancePage() {
       hadir: records.filter((r) => r?.status === "hadir").length,
       izin: records.filter((r) => r?.status === "izin").length,
       sakit: records.filter((r) => r?.status === "sakit").length,
-      alpha: records.filter((r) => !r || r.status === "alfa").length,
+      alfa: records.filter((r) => !r || r.status === "alfa").length,
       total: dayView.length,
     };
   }, [dayView]);
@@ -263,7 +264,7 @@ export default function AttendancePage() {
     toast.success(`${saved.length} dari ${visibleStudents.length} santri berhasil diabsen hadir`);
   };
 
-  const canAdd = user?.role === "admin" || user?.role === "guru";
+  const canAdd = (user?.role === "admin" || user?.role === "guru") && getCrudEnabled("attendance");
 
   const getKelasName = (kelasId: string | null) => {
     if (!kelasId) return "-";
@@ -279,7 +280,7 @@ export default function AttendancePage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensi Santri</h1>
+          <h1 className="text-3xl font-bold gradient-text">Absensi Santri</h1>
           <div className="flex gap-2">
             {user?.role === "admin" && (
               <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
@@ -389,7 +390,7 @@ export default function AttendancePage() {
             <p className="text-xs text-emerald-700">Sakit</p>
           </CardContent></Card>
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alpha}</div>
+            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
             <p className="text-xs text-emerald-700">Belum absen</p>
           </CardContent></Card>
         </div>
@@ -445,7 +446,7 @@ export default function AttendancePage() {
                                       <SelectItem value="hadir">Hadir</SelectItem>
                                       <SelectItem value="izin">Izin</SelectItem>
                                       <SelectItem value="sakit">Sakit</SelectItem>
-                                      <SelectItem value="alpha">Alpha</SelectItem>
+                                      <SelectItem value="alfa">Alpha</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   {user?.role === "admin" && (
@@ -508,7 +509,7 @@ export default function AttendancePage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-md rounded-2xl border-emerald-200 bg-white/95">
             <DialogHeader>
-              <DialogTitle className="bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Tambah Absensi</DialogTitle>
+              <DialogTitle className="gradient-text">Tambah Absensi</DialogTitle>
               <DialogDescription className="text-emerald-600">Catat kehadiran santri</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -534,7 +535,7 @@ export default function AttendancePage() {
                       <SelectItem value="hadir">Hadir</SelectItem>
                       <SelectItem value="izin">Izin</SelectItem>
                       <SelectItem value="sakit">Sakit</SelectItem>
-                      <SelectItem value="alpha">Alpha</SelectItem>
+                      <SelectItem value="alfa">Alpha</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   HeartHandshake,
   DoorOpen,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -55,6 +56,7 @@ const allMenuItems: MenuItem[] = [
   { label: "Pembayaran", icon: CreditCard, href: "/payments", roles: ["admin", "guru", "orangtua"], iconColor: "#dc2626", bgColor: "#fee2e2" },
   { label: "Absensiku", icon: CalendarDays, href: "/my-attendance", roles: ["guru", "munawib"], iconColor: "#0891b2", bgColor: "#cffafe" },
   { label: "Pengguna", icon: UserCog, href: "/profile", roles: ["admin"], iconColor: "#475569", bgColor: "#f1f5f9" },
+  { label: "Pengaturan", icon: Settings, href: "/settings", roles: ["admin"], iconColor: "#7c3aed", bgColor: "#ede9fe" },
 ];
 
 export default function Home() {
@@ -140,7 +142,7 @@ export default function Home() {
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
                 }} />
               </div>
-              <span className="text-xs font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent leading-tight tracking-wide">{item.label}</span>
+              <span className="text-xs font-bold gradient-text leading-tight tracking-wide">{item.label}</span>
             </Link>
           ))}
         </nav>
@@ -154,7 +156,7 @@ export default function Home() {
     <div className="hidden lg:block min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Beranda</h1>
+          <h1 className="text-3xl font-bold gradient-text">Beranda</h1>
           <p className="text-sm text-emerald-600 mt-1">Selamat datang, {user?.name}. Pilih menu di bawah.</p>
         </div>
         <nav className="grid grid-cols-4 xl:grid-cols-5 gap-4">

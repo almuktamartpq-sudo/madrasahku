@@ -17,11 +17,12 @@ import {
 import { CreditCard, Plus, Search, CheckCircle, Zap, Edit, Trash2, Power, Users } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentType } from "@/types";
+import { getCrudEnabled } from "@/pages/Settings";
 
 export default function Payments() {
   const { user } = useAuth();
   const { students, payments, paymentTypes, fetchAll } = useAppStore();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" && getCrudEnabled("payments");
   const [activeTab, setActiveTab] = useState<"types" | "students">(isAdmin ? "types" : "students");
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -29,8 +30,8 @@ export default function Payments() {
   // Payment Type CRUD
   const cardClasses = "bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50 border-emerald-200/60 shadow-lg hover:shadow-xl transition-all duration-300";
   const buttonClasses = "bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300";
-  const gradientText = "bg-gradient-to-r from-emerald-600 to-amber-600 bg-clip-text text-transparent";
-  const gradientTextDark = "bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent";
+  const gradientText = "gradient-text";
+  const gradientTextDark = "gradient-text";
 
   // Payment Type CRUD
   const [showTypeDialog, setShowTypeDialog] = useState(false);
@@ -149,7 +150,8 @@ export default function Payments() {
   const selectedPaymentType = paymentTypes.find((pt) => pt.nama === selectedType);
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
+      <div className="container mx-auto p-4 space-y-6">
       <h1 className={`text-3xl font-bold ${gradientText}`}>Pembayaran</h1>
 
       {/* Tabs */}
@@ -330,13 +332,31 @@ export default function Payments() {
                             <CheckCircle className="h-3 w-3 mr-1" /> Lunas
                           </Badge>
                         ) : isAdmin ? (
-                          <Button
-                            size="sm"
-                            className={buttonClasses}
-                            onClick={() => handleMarkPaid(p.id)}
-                          >
-                            <CheckCircle className="h-3 w-3 mr-1" /> Tandai Lunas
-                          </Button>
+                          <div className="flex gap-1 shrink-0">
+                            <Button
+                              size="sm"
+                              className={buttonClasses}
+                              onClick={() => handleMarkPaid(p.id)}
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" /> Lunas
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await api.deletePayment(p.id);
+                                  fetchAll();
+                                  toast.success("Pembayaran dihapus");
+                                } catch (err: any) {
+                                  toast.error("Gagal hapus", { description: err.message });
+                                }
+                              }}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         ) : (
                           <Badge variant="outline" className="border-amber-300 text-amber-700">
                             Belum Lunas
@@ -394,6 +414,7 @@ export default function Payments() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

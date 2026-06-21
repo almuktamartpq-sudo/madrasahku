@@ -86,7 +86,7 @@ export default function Login() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <img src="/logo.png" alt="Logo" className="h-20 w-20 mx-auto rounded-2xl shadow-lg border-2 border-emerald-200 mb-4" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Al-Muktamar</h1>
+            <h1 className="text-3xl font-bold gradient-text">Al-Muktamar</h1>
             <p className="text-sm text-emerald-600 mt-1">Sistem Informasi Madrasah</p>
           </div>
 

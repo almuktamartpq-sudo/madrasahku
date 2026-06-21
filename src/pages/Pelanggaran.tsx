@@ -59,8 +59,8 @@ export default function PelanggaranPage() {
   // Tailwind config overrides for emerald-gold theme
   const cardClasses = "bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50 border-emerald-200/60 shadow-lg hover:shadow-xl transition-all duration-300";
   const buttonClasses = "bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white font-medium shadow-md hover:shadow-lg transition-all duration-300";
-  const gradientText = "bg-gradient-to-r from-emerald-600 to-amber-600 bg-clip-text text-transparent";
-  const gradientTextDark = "bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent";
+  const gradientText = "gradient-text";
+  const gradientTextDark = "gradient-text";
 
   const canModify = user?.role === "admin" || user?.role === "guru";
   const isOrangtua = user?.role === "orangtua";
@@ -173,7 +173,8 @@ export default function PelanggaranPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
+      <div className="container mx-auto p-4 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className={`text-3xl font-bold ${gradientText}`}>Pelanggaran</h1>
@@ -306,6 +307,7 @@ export default function PelanggaranPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

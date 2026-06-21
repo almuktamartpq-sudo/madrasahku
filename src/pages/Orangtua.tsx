@@ -118,7 +118,7 @@ export default function OrangtuaPage() {
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Orang Tua</h1>
+            <h1 className="text-3xl font-bold gradient-text">Orang Tua</h1>
             <p className="text-sm text-emerald-600 mt-1">Data orang tua santri dan nomor WhatsApp.</p>
           </div>
           {isAdmin && (

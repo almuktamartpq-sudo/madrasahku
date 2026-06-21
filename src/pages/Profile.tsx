@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppStore } from "@/data/store";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,6 +80,8 @@ export default function ProfilePage() {
     return list;
   }, [profiles, filterRole, search]);
 
+  const { paginatedItems: paginatedProfiles, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 10);
+
   const roleCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     profiles.forEach(p => { counts[p.role] = (counts[p.role] || 0) + 1; });
@@ -138,11 +142,11 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
-      <div className="space-y-6">
+      <div className="container mx-auto p-4 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Pengguna</h1>
+            <h1 className="text-3xl font-bold gradient-text">Pengguna</h1>
             <p className="text-sm text-emerald-600 mt-0.5">Kelola semua akun pengguna sistem</p>
           </div>
           <Button onClick={openAdd} className="bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white">
@@ -200,7 +204,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
           ) : (
-            filtered.map(p => {
+            paginatedProfiles.map(p => {
               const RoleIcon = getRoleIcon(p.role);
               const isSelf = user?.id === p.id;
               return (
@@ -208,7 +212,7 @@ export default function ProfilePage() {
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12 border-2 border-emerald-200">
-                        <AvatarFallback className="bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-700 font-bold text-sm">
+                        <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-amber-500 text-white font-bold text-xs">
                           {getInitials(p.name)}
                         </AvatarFallback>
                       </Avatar>
@@ -253,6 +257,8 @@ export default function ProfilePage() {
             })
           )}
         </div>
+
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
       </div>
 
       {/* Add/Edit Dialog */}

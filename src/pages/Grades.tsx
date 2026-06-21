@@ -9,6 +9,7 @@ import {
   TrendingUp,
   BookOpen,
   Calendar,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import * as api from "@/data/api";
 import { cn, getLocalDate } from "@/lib/utils";
+import { getCrudEnabled } from "@/pages/Settings";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
+import { toast } from "sonner";
 
 const gradeTypeConfig: Record<string, { label: string; color: string }> = {
   tamrin: { label: "Tamrin", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -63,7 +69,8 @@ export default function GradesPage() {
 
   const isOrangtua = user?.role === "orangtua";
   const isGuru = user?.role === "guru";
-  const canAdd = user?.role === "admin" || user?.role === "guru";
+  const canAdd = (user?.role === "admin" || user?.role === "guru") && getCrudEnabled("grades");
+  const isAdminCrud = user?.role === "admin" && getCrudEnabled("grades");
 
   const filtered = useMemo(() => {
     let list = grades;
@@ -85,6 +92,8 @@ export default function GradesPage() {
     if (typeFilter !== "all") list = list.filter((g) => g.type === typeFilter);
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [grades, search, studentFilter, kelasFilter, typeFilter, isOrangtua, isGuru, parentStudentIds, guruKelasId, students, kelasList]);
+
+  const { paginatedItems: paginatedGrades, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 20);
 
   const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? "-";
   const getStudentKelas = (id: string) => {
@@ -187,9 +196,9 @@ export default function GradesPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
-      <div className="space-y-6">
+      <div className="container mx-auto p-4 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Nilai</h1>
+          <h1 className="text-3xl font-bold gradient-text">Nilai</h1>
           <p className="text-sm text-emerald-600 mt-0.5">
             {stats.count} data nilai &middot; Rata-rata: {stats.avg}
           </p>
@@ -283,10 +292,11 @@ export default function GradesPage() {
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Tipe</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Nilai</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Smt</th>
+                {isAdminCrud && <th className="text-left py-3 px-3 font-medium text-emerald-600 w-10"></th>}
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 60).map((g, idx) => {
+              {paginatedGrades.map((g, idx) => {
                 const d = new Date(g.date);
                 const tgl = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear().toString().slice(-2)}`;
                 return (
@@ -304,12 +314,33 @@ export default function GradesPage() {
                     <span className={cn("font-bold", getScoreColor(g.score))}>{g.score}</span>
                   </td>
                   <td className="py-2.5 px-3 text-emerald-500 text-center">{g.semester}</td>
+                  {isAdminCrud && (
+                    <td className="py-2.5 px-3">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await api.deleteGrade(g.id);
+                            setGrades((prev) => prev.filter((x) => x.id !== g.id));
+                            toast.success("Nilai dihapus");
+                          } catch (err: any) {
+                            toast.error("Gagal hapus", { description: err.message });
+                          }
+                        }}
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  )}
                 </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
         {filtered.length === 0 && (
           <div className="text-center py-16">
             <GraduationCap className="h-12 w-12 text-emerald-300 mx-auto mb-3" />

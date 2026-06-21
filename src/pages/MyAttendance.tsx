@@ -175,13 +175,13 @@ export default function MyAttendance() {
     hadir: myRecords.filter((a) => a.status === "hadir").length,
     izin: myRecords.filter((a) => a.status === "izin").length,
     sakit: myRecords.filter((a) => a.status === "sakit").length,
-    alpha: myRecords.filter((a) => a.status === "alpha").length,
+    alfa: myRecords.filter((a) => a.status === "alfa").length,
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Absensiku</h1>
+        <h1 className="text-3xl font-bold gradient-text">Absensiku</h1>
 
         {/* Holiday/Off-day banner */}
         {(isOffDay(selectedDate) || isHoliday(selectedDate)) && (
@@ -353,7 +353,7 @@ export default function MyAttendance() {
             <p className="text-xs text-emerald-700">Sakit</p>
           </CardContent></Card>
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alpha}</div>
+            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
             <p className="text-xs text-emerald-700">Belum absen</p>
           </CardContent></Card>
         </div>

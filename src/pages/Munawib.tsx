@@ -10,6 +10,9 @@ import {
 } from "@/components/ui/dialog";
 import { UserCircle, Edit, BookOpen, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
+import { getInitials } from "@/lib/utils";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
 import type { Profile } from "@/types";
 
 const DAY_NAMES = ["", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
@@ -28,6 +31,8 @@ export default function MunawibPage() {
     () => profiles.filter((p) => p.role === "munawib").sort((a, b) => a.name.localeCompare(b.name)),
     [profiles]
   );
+
+  const { paginatedItems: paginatedMunawib, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(munawibList, 10);
 
   useEffect(() => {
     loadData();
@@ -116,7 +121,7 @@ export default function MunawibPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Data Munawib</h1>
+        <h1 className="text-3xl font-bold gradient-text">Data Munawib</h1>
         </div>
         {/* Munawib List */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
@@ -129,13 +134,13 @@ export default function MunawibPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {munawibList.map((m) => {
+                {paginatedMunawib.map((m) => {
                   const mapelNames = getMapelNames(m.id);
                   const days = getScheduleDays(m.id);
                   return (
                     <div key={m.id} className="flex items-center gap-3 p-3 border border-emerald-200 rounded-lg hover:bg-emerald-50/50 transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 flex items-center justify-center text-white font-bold text-sm">
-                        {m.name.charAt(0).toUpperCase()}
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 flex items-center justify-center text-white font-bold text-xs">
+                        {getInitials(m.name)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-emerald-900">{m.name}</p>
@@ -173,8 +178,8 @@ export default function MunawibPage() {
             <div className="space-y-4">
               {editingMunawib && (
                 <div className="flex items-center gap-3 p-3 bg-emerald-50/50 rounded-lg border border-emerald-200">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-gradient-to-r from-emerald-500 to-amber-500">
-                    {editingMunawib.name.charAt(0).toUpperCase()}
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-emerald-500 to-amber-500">
+                    {getInitials(editingMunawib.name)}
                   </div>
                   <div>
                     <p className="font-medium text-emerald-900">{editingMunawib.name}</p>

@@ -12,3 +12,13 @@ export function getLocalDate(date: Date = new Date()): string {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+// Get 2-letter initials from name
+export function getInitials(name: string | undefined | null): string {
+  if (!name) return "??";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}

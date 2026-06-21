@@ -5,6 +5,9 @@ import { getLocalDate } from "@/lib/utils";
 import { fetchStudents, createStudent, updateStudent, deleteStudent, uploadPhoto, deletePhoto, fetchParentStudentIds, fetchKelas, fetchPelanggaran } from "@/data/store";
 import type { Student, Kelas, Pelanggaran } from "@/types";
 import { toast } from "sonner";
+import { getCrudEnabled } from "@/pages/Settings";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
 import ModalTambahSantri from "@/components/ModalTambahSantri";
 import ModalInputMassal from "@/components/ModalInputMassal";
 import {
@@ -80,7 +83,7 @@ export default function StudentsPage() {
   const [modalTambahOpen, setModalTambahOpen] = useState(false);
   const [modalMassalOpen, setModalMassalOpen] = useState(false);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" && getCrudEnabled("students");
   const isOrangtua = user?.role === "orangtua";
   const navigate = useNavigate();
 
@@ -118,6 +121,8 @@ export default function StudentsPage() {
     }
     return list;
   }, [students, search, kelasFilter, isOrangtua, parentStudentIds]);
+
+  const { paginatedItems: paginatedStudents, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 12);
 
   useEffect(() => {
     Promise.all([fetchStudents(), fetchKelas(), fetchPelanggaran()])
@@ -266,7 +271,7 @@ export default function StudentsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Data Santri</h1>
+            <h1 className="text-3xl font-bold gradient-text">Data Santri</h1>
             <p className="text-sm text-emerald-600 mt-0.5">
               {filtered.length} santri terdaftar
             </p>
@@ -316,7 +321,7 @@ export default function StudentsPage() {
 
         {/* Student Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((s) => (
+          {paginatedStudents.map((s) => (
             <div
               key={s.id}
               className="group rounded-xl border border-emerald-300 bg-gradient-to-b from-emerald-50 via-amber-50/60 to-white shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300 overflow-hidden max-w-[420px] w-full mx-auto"
@@ -429,6 +434,8 @@ export default function StudentsPage() {
           ))}
         </div>
 
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
+
         {filtered.length === 0 && (
           <div className="text-center py-16">
             <Users className="h-12 w-12 text-emerald-300 mx-auto mb-3" />
@@ -443,7 +450,7 @@ export default function StudentsPage() {
             {detailStudent && (
               <>
                 <DialogHeader>
-                  <DialogTitle className="text-xl bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">Detail Santri</DialogTitle>
+                  <DialogTitle className="text-xl gradient-text">Detail Santri</DialogTitle>
                   <DialogDescription className="text-emerald-600">Informasi lengkap data santri</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-5">
@@ -457,7 +464,7 @@ export default function StudentsPage() {
                     )}
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">{detailStudent.name}</h3>
+                        <h3 className="text-lg font-bold gradient-text">{detailStudent.name}</h3>
                         {pelanggaran.some((p) => p.student_id === detailStudent.id) && (
                           <Badge className="inline-flex items-center gap-1 text-[10px] bg-red-50 text-red-700 border-red-200 rounded-full px-2 py-1">
                             <span className="inline-block h-3 w-1.5 rounded-full bg-red-600" />
@@ -484,7 +491,7 @@ export default function StudentsPage() {
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto border-emerald-200 bg-white/90">
             <DialogHeader>
-              <DialogTitle className="bg-gradient-to-r from-emerald-700 to-amber-700 bg-clip-text text-transparent">{editing.id ? "Edit Siswa" : "Tambah Siswa Baru"}</DialogTitle>
+              <DialogTitle className="gradient-text">{editing.id ? "Edit Siswa" : "Tambah Siswa Baru"}</DialogTitle>
               <DialogDescription className="text-emerald-600">
                 {editing.id ? "Perbarui data siswa" : "Isi data untuk menambahkan siswa baru"}
               </DialogDescription>
