@@ -7,9 +7,11 @@ import {
   Plus,
   GraduationCap,
   TrendingUp,
-  BookOpen,
+  Pencil,
   Calendar,
   Trash2,
+  BookOpen,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +37,9 @@ import { getCrudEnabled } from "@/pages/Settings";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/Pagination";
 import { toast } from "sonner";
+import { updateGrade } from "@/data/api";
+import { generateGradesPdf } from "@/lib/pdfReport";
+import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
 
 const gradeTypeConfig: Record<string, { label: string; color: string }> = {
   tamrin: { label: "Tamrin", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -57,6 +62,7 @@ export default function GradesPage() {
   const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMapelId, setSelectedMapelId] = useState("");
+  const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
   const [newGrade, setNewGrade] = useState<Partial<Grade>>({
     type: "tamrin",
     score: 80,
@@ -71,6 +77,12 @@ export default function GradesPage() {
   const isGuru = user?.role === "guru";
   const canAdd = (user?.role === "admin" || user?.role === "guru") && getCrudEnabled("grades");
   const isAdminCrud = user?.role === "admin" && getCrudEnabled("grades");
+  const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
+
+  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
+    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+    generateGradesPdf(grades, students, kelasList, mapelList, startDate, endDate, hijriLabel);
+  };
 
   const filtered = useMemo(() => {
     let list = grades;
@@ -95,13 +107,14 @@ export default function GradesPage() {
 
   const { paginatedItems: paginatedGrades, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 20);
 
-  const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? "-";
-  const getStudentKelas = (id: string) => {
+  const getStudentName = (id: string | null | undefined) => students.find((s) => s.id === id)?.name ?? "-";
+  const getStudentKelas = (id: string | null | undefined) => {
     const student = students.find((s) => s.id === id);
     if (!student?.kelas_id) return "-";
     return kelasList.find((k) => k.id === student.kelas_id)?.nama ?? "-";
   };
-  const getKelasName = (kelasId: string) => kelasList.find((k) => k.id === kelasId)?.nama ?? "-";
+  const getKelasName = (kelasId: string | null | undefined) => kelasList.find((k) => k.id === kelasId)?.nama ?? "-";
+  const getMapelName = (mapelId?: string | null) => mapelList.find((m) => m.id === mapelId)?.nama ?? "-";
 
   // Filtered student list (guru sees only their kelas students)
   const studentList = useMemo(() => {
@@ -158,27 +171,51 @@ export default function GradesPage() {
   }, [isOrangtua, isGuru, user?.id]);
 
   const handleAdd = async () => {
-    if (!newGrade.student_id || !newGrade.kelas_id) return;
-    const grade: Omit<Grade, 'id' | 'created_at'> = {
-      student_id: newGrade.student_id!,
-      kelas_id: newGrade.kelas_id!,
-      type: newGrade.type ?? "tamrin",
-      score: newGrade.score ?? 80,
-      semester: newGrade.semester ?? "1",
-      date: newGrade.date ?? getLocalDate(),
-    };
-    const saved = await createGrade(grade);
-    setGrades((prev) => [saved, ...prev]);
-    setDialogOpen(false);
-    setSelectedMapelId("");
-    setNewGrade({
-      type: "tamrin",
-      score: 80,
-      semester: "1",
-      date: getLocalDate(),
-      kelas_id: "",
-      student_id: "",
-    });
+    if (!newGrade.student_id || !newGrade.kelas_id || !selectedMapelId) return;
+
+    try {
+      if (editingGrade) {
+        // UPDATE existing grade
+        const updated = await updateGrade(editingGrade.id, {
+          student_id: newGrade.student_id!,
+          kelas_id: newGrade.kelas_id!,
+          mapel_id: selectedMapelId,
+          type: newGrade.type ?? "tamrin",
+          score: newGrade.score ?? 80,
+          semester: newGrade.semester ?? "1",
+          date: newGrade.date ?? getLocalDate(),
+        });
+        setGrades((prev) => prev.map((g) => g.id === updated.id ? updated : g));
+        toast.success("Nilai diupdate");
+      } else {
+        // INSERT new grade
+        const grade: Omit<Grade, 'id' | 'created_at'> = {
+          student_id: newGrade.student_id!,
+          kelas_id: newGrade.kelas_id!,
+          mapel_id: selectedMapelId,
+          type: newGrade.type ?? "tamrin",
+          score: newGrade.score ?? 80,
+          semester: newGrade.semester ?? "1",
+          date: newGrade.date ?? getLocalDate(),
+        };
+        const saved = await createGrade(grade);
+        setGrades((prev) => [saved, ...prev]);
+        toast.success("Nilai ditambahkan");
+      }
+      setDialogOpen(false);
+      setSelectedMapelId("");
+      setNewGrade({
+        type: "tamrin",
+        score: 80,
+        semester: "1",
+        date: getLocalDate(),
+        kelas_id: "",
+        student_id: "",
+      });
+      setEditingGrade(null);
+    } catch (err: any) {
+      toast.error(editingGrade ? "Gagal update" : "Gagal simpan", { description: err.message });
+    }
   };
 
   const getScoreColor = (score: number) => {
@@ -203,15 +240,27 @@ export default function GradesPage() {
             {stats.count} data nilai &middot; Rata-rata: {stats.avg}
           </p>
         </div>
-        {canAdd && (
-          <Button
-            onClick={() => setDialogOpen(true)}
-            className="h-10 rounded-xl bg-gradient-to-r from-emerald-700 to-amber-600 text-white hover:shadow-lg hover:shadow-emerald-700/20 transition-all"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Tambah Nilai
-          </Button>
-        )}
+        <div className="flex gap-3 flex-wrap">
+          {canAdd && (
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="h-10 rounded-xl bg-gradient-to-r from-emerald-700 to-amber-600 text-white hover:shadow-lg hover:shadow-emerald-700/20 transition-all"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Tambah Nilai
+            </Button>
+          )}
+          {isAdminCrud && (
+            <Button
+              onClick={() => setPdfPickerOpen(true)}
+              variant="outline"
+              className="h-10 rounded-xl border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              <FileDown className="h-4 w-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
+        </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -288,11 +337,18 @@ export default function GradesPage() {
                 <th className="text-left py-3 px-3 font-medium text-emerald-600 w-10">No.</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Tgl</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600 min-w-[140px]">Nama</th>
-                <th className="text-left py-3 px-3 font-medium text-emerald-600">Kls</th>
+                {isGuru ? (
+                  <th className="text-left py-3 px-3 font-medium text-emerald-600">Mapel</th>
+                ) : (
+                  <>
+                    <th className="text-left py-3 px-3 font-medium text-emerald-600">Kls</th>
+                    <th className="text-left py-3 px-3 font-medium text-emerald-600">Mapel</th>
+                  </>
+                )}
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Tipe</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Nilai</th>
                 <th className="text-left py-3 px-3 font-medium text-emerald-600">Smt</th>
-                {isAdminCrud && <th className="text-left py-3 px-3 font-medium text-emerald-600 w-10"></th>}
+                {(canAdd || isAdminCrud) && <th className="text-left py-3 px-3 font-medium text-emerald-600 w-10"></th>}
               </tr>
             </thead>
             <tbody>
@@ -304,7 +360,14 @@ export default function GradesPage() {
                   <td className="py-2.5 px-3 text-emerald-500">{idx + 1}</td>
                   <td className="py-2.5 px-3 text-emerald-600 text-xs whitespace-nowrap">{tgl}</td>
                   <td className="py-2.5 px-3 font-medium text-emerald-800">{getStudentName(g.student_id)}</td>
-                  <td className="py-2.5 px-3 text-emerald-600 text-xs">{getKelasName(g.kelas_id ?? "")}</td>
+                  {isGuru ? (
+                    <td className="py-2.5 px-3 text-emerald-600 text-xs">{getMapelName(g.mapel_id)}</td>
+                  ) : (
+                    <>
+                      <td className="py-2.5 px-3 text-emerald-600 text-xs">{getKelasName(g.kelas_id)}</td>
+                      <td className="py-2.5 px-3 text-emerald-600 text-xs">{getMapelName(g.mapel_id)}</td>
+                    </>
+                  )}
                   <td className="py-2.5 px-3">
                     <Badge className={cn("text-xs", gradeTypeConfig[g.type].color)}>
                       {gradeTypeConfig[g.type].label}
@@ -314,24 +377,47 @@ export default function GradesPage() {
                     <span className={cn("font-bold", getScoreColor(g.score))}>{g.score}</span>
                   </td>
                   <td className="py-2.5 px-3 text-emerald-500 text-center">{g.semester}</td>
-                  {isAdminCrud && (
+                  {(canAdd || isAdminCrud) && (
                     <td className="py-2.5 px-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            await api.deleteGrade(g.id);
-                            setGrades((prev) => prev.filter((x) => x.id !== g.id));
-                            toast.success("Nilai dihapus");
-                          } catch (err: any) {
-                            toast.error("Gagal hapus", { description: err.message });
-                          }
-                        }}
-                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {isAdminCrud ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await api.deleteGrade(g.id);
+                              setGrades((prev) => prev.filter((x) => x.id !== g.id));
+                              toast.success("Nilai dihapus");
+                            } catch (err: any) {
+                              toast.error("Gagal hapus", { description: err.message });
+                            }
+                          }}
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingGrade(g);
+                            setNewGrade({
+                              student_id: g.student_id,
+                              kelas_id: g.kelas_id,
+                              type: g.type,
+                              score: g.score,
+                              semester: g.semester,
+                              date: g.date,
+                            });
+                            setSelectedMapelId(g.mapel_id || "");
+                            setDialogOpen(true);
+                          }}
+                          className="h-7 w-7 p-0 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -351,11 +437,11 @@ export default function GradesPage() {
       </div>
 
       {/* Add Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setSelectedMapelId(""); }}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) { setEditingGrade(null); setSelectedMapelId(""); }}}>
         <DialogContent className="max-w-md rounded-2xl border-emerald-200 bg-white/90">
           <DialogHeader>
-            <DialogTitle className="text-emerald-800">Tambah Nilai Baru</DialogTitle>
-            <DialogDescription className="text-emerald-600">Input nilai santri</DialogDescription>
+            <DialogTitle className="text-emerald-800">{editingGrade ? "Edit Nilai" : "Tambah Nilai Baru"}</DialogTitle>
+            <DialogDescription className="text-emerald-600">{editingGrade ? "Ubah nilai santri" : "Input nilai santri"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -370,7 +456,7 @@ export default function GradesPage() {
                 </SelectTrigger>
                 <SelectContent position="popper" className="max-h-60">
                   {studentList.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} ({getStudentKelas(s.id)})</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.name}{isGuru ? "" : ` (${getStudentKelas(s.id)})`}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -383,8 +469,6 @@ export default function GradesPage() {
                   value={selectedMapelId}
                   onValueChange={(v) => {
                     setSelectedMapelId(v);
-                    const selected = mapelList.find((m) => m.id === v);
-                    setNewGrade({ ...newGrade, kelas_id: selected?.kelas_id ?? "" });
                   }}
                 >
                   <SelectTrigger className="h-10 rounded-xl border-emerald-200 bg-white focus:border-emerald-400 focus:ring-emerald-200">
@@ -445,13 +529,16 @@ export default function GradesPage() {
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-10 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50">Batal</Button>
-              <Button onClick={handleAdd} disabled={!newGrade.student_id || !newGrade.kelas_id} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-700 to-amber-600 text-white">
+              <Button onClick={handleAdd} disabled={!newGrade.student_id || !newGrade.kelas_id || !selectedMapelId} className="flex-1 h-10 rounded-xl bg-gradient-to-r from-emerald-700 to-amber-600 text-white">
                 Simpan Nilai
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Hijri Month Picker for PDF */}
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { getLocalDate } from "@/lib/utils";
-import { fetchStudents, createStudent, updateStudent, deleteStudent, uploadPhoto, deletePhoto, fetchParentStudentIds, fetchKelas, fetchPelanggaran } from "@/data/store";
+import { fetchStudents, createStudent, updateStudent, deleteStudent, uploadPhoto, deletePhoto, fetchParentStudentIds, fetchKelas, fetchPelanggaran, fetchProfileKelasId } from "@/data/store";
 import type { Student, Kelas, Pelanggaran } from "@/types";
 import { toast } from "sonner";
 import { getCrudEnabled } from "@/pages/Settings";
@@ -85,6 +85,8 @@ export default function StudentsPage() {
 
   const isAdmin = user?.role === "admin" && getCrudEnabled("students");
   const isOrangtua = user?.role === "orangtua";
+  const isGuru = user?.role === "guru";
+  const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const navigateToPelanggaran = (studentId: string) => {
@@ -107,6 +109,9 @@ export default function StudentsPage() {
     if (isOrangtua && parentStudentIds.length > 0) {
       list = list.filter((s) => parentStudentIds.includes(s.id));
     }
+    if (isGuru && guruKelasId) {
+      list = list.filter((s) => s.kelas_id === guruKelasId);
+    }
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -120,7 +125,7 @@ export default function StudentsPage() {
       list = list.filter((s) => s.kelas_id === kelasFilter);
     }
     return list;
-  }, [students, search, kelasFilter, isOrangtua, parentStudentIds]);
+  }, [students, search, kelasFilter, isOrangtua, parentStudentIds, isGuru, guruKelasId]);
 
   const { paginatedItems: paginatedStudents, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 12);
 
@@ -133,7 +138,8 @@ export default function StudentsPage() {
       })
       .finally(() => setLoading(false));
     if (isOrangtua) fetchParentStudentIds(user.id).then(setParentStudentIds);
-  }, [isOrangtua, user]);
+    if (isGuru) fetchProfileKelasId(user.id).then(setGuruKelasId);
+  }, [isOrangtua, isGuru, user]);
 
   const handleSave = async () => {
     // Validate required fields

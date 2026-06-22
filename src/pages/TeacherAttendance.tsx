@@ -18,10 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2 } from "lucide-react";
+import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { getCrudEnabled } from "@/pages/Settings";
 import { cn, getLocalDate } from "@/lib/utils";
+import { generateTeacherAttendancePdf } from "@/lib/pdfReport";
+import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
 import {
   isOffDay,
   isHoliday,
@@ -374,6 +376,17 @@ export default function TeacherAttendancePage() {
   };
 
   const isAdmin = user?.role === "admin" && getCrudEnabled("teacher-attendance");
+  const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
+
+  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
+    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+    generateTeacherAttendancePdf(
+      allPeople.map((p) => ({ id: p.sourceId, name: p.name, type: p.type })),
+      teacherAttendance.filter((a) => a.date >= startDate && a.date <= endDate),
+      munawibAttendance.filter((a) => a.date >= startDate && a.date <= endDate),
+      startDate, endDate, hijriLabel
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
@@ -381,6 +394,11 @@ export default function TeacherAttendancePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold gradient-text">Absensi Guru & Munawib</h1>
           <div className="flex gap-2">
+            {isAdmin && (
+              <Button onClick={() => setPdfPickerOpen(true)} variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                <FileDown className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+            )}
             {isAdmin && (
               <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                 <Palmtree className="mr-2 h-4 w-4" /> Kelola Libur
@@ -670,6 +688,9 @@ export default function TeacherAttendancePage() {
 
       {/* Holiday Management Dialog */}
       <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
+
+      {/* Hijri Month Picker for PDF */}
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAppStore } from "@/data/store";
 import * as api from "@/data/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +14,18 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { CreditCard, Plus, Search, CheckCircle, Zap, Edit, Trash2, Power, Users } from "lucide-react";
+import { CreditCard, Plus, Search, CheckCircle, Zap, Edit, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import type { PaymentType } from "@/types";
 import { getCrudEnabled } from "@/pages/Settings";
+import { fetchProfileKelasId } from "@/data/store";
 
 export default function Payments() {
   const { user } = useAuth();
   const { students, payments, paymentTypes, fetchAll } = useAppStore();
   const isAdmin = user?.role === "admin" && getCrudEnabled("payments");
+  const isGuru = user?.role === "guru";
+  const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"types" | "students">(isAdmin ? "types" : "students");
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -44,6 +47,7 @@ export default function Payments() {
   const [showActivateDialog, setShowActivateDialog] = useState(false);
 
   useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { if (isGuru && user?.id) fetchProfileKelasId(user.id).then(setGuruKelasId); }, [isGuru, user?.id]);
 
   // Payment type CRUD handlers
   const openAddType = () => {
@@ -118,6 +122,10 @@ export default function Payments() {
   // Filter payments by selected type
   const filteredPayments = useMemo(() => {
     let result = payments;
+    if (isGuru && guruKelasId) {
+      const kelasStudentIds = new Set(students.filter((s) => s.kelas_id === guruKelasId).map((s) => s.id));
+      result = result.filter((p) => kelasStudentIds.has(p.student_id));
+    }
     if (selectedType) {
       result = result.filter((p) => p.type === selectedType);
     }
@@ -133,7 +141,7 @@ export default function Payments() {
       const sb = students.find((s) => s.id === b.student_id)?.name || "";
       return sa.localeCompare(sb);
     });
-  }, [payments, students, selectedType, search]);
+  }, [payments, students, selectedType, search, isGuru, guruKelasId]);
 
   const stats = useMemo(() => {
     const total = filteredPayments.length;
@@ -146,8 +154,6 @@ export default function Payments() {
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
 
   const getStudentName = (studentId: string) => students.find((s) => s.id === studentId)?.name || "Unknown";
-
-  const selectedPaymentType = paymentTypes.find((pt) => pt.nama === selectedType);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">

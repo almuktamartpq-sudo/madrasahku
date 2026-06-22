@@ -48,6 +48,7 @@ export interface Grade {
   date: string;
   keterangan?: string;
   kelas_id?: string;
+  mapel_id?: string | null;
   created_at: string;
 }
 

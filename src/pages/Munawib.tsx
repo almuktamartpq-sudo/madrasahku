@@ -169,6 +169,8 @@ export default function MunawibPage() {
           </CardContent>
         </Card>
 
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
+
         {/* Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={() => setShowDialog(false)}>
           <DialogContent className="border-emerald-200 bg-white/90 backdrop-blur-sm">

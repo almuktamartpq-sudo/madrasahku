@@ -17,6 +17,7 @@ import {
   CalendarDays,
   Palmtree,
   Trash2,
+  FileDown,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,11 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn, getLocalDate } from "@/lib/utils";
+import { generateAttendancePdf } from "@/lib/pdfReport";
+import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
 import {
   isOffDay,
   isHoliday,
   getHoliday,
-  getHolidayDates,
   getTodayHolidayNotice,
   getUpcomingHolidayNotice,
   OFF_DAY_NAME,
@@ -75,8 +77,9 @@ export default function AttendancePage() {
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState(getLocalDate());
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [newAttendance, setNewAttendance] = useState<Partial<Attendance>>({
+  const [newAttendance, setNewAttendance] = useState<Partial<Attendance> & { dateTo?: string }>({
     date: getLocalDate(),
+    dateTo: getLocalDate(),
     status: "hadir",
   });
   const [keteranganDialog, setKeteranganDialog] = useState<{ id: string; status: AttendanceStatus } | null>(null);
@@ -140,8 +143,6 @@ export default function AttendancePage() {
         .map((a) => a.date)
     );
   }, [attendance, visibleStudents]);
-
-  const holidayDates = useMemo(() => getHolidayDates(), []);
 
   // Holiday notification on mount
   useEffect(() => {
@@ -218,27 +219,66 @@ export default function AttendancePage() {
 
   const handleAddSingle = async () => {
     if (!newAttendance.student_id) return;
-    const exists = attendance.some(
-      (a) => a.student_id === newAttendance.student_id && a.date === newAttendance.date
-    );
-    if (exists) {
-      toast.error("Santri sudah diabsen pada tanggal ini");
-      return;
-    }
     if (!newAttendance.date) {
       toast.error("Tanggal absensi harus diisi");
       return;
     }
-    const record = {
-      student_id: newAttendance.student_id,
-      date: newAttendance.date,
-      status: newAttendance.status as AttendanceStatus,
-      keterangan: newAttendance.status !== "hadir" ? newAttendance.keterangan : undefined,
-    };
-    const saved = await createAttendance(record);
-    setAttendance((prev) => [saved, ...prev]);
+
+    const status = newAttendance.status as AttendanceStatus;
+    const isRange = (status === "izin" || status === "sakit") && newAttendance.dateTo && newAttendance.dateTo > newAttendance.date;
+
+    if (isRange) {
+      // Generate all dates in range
+      const dates: string[] = [];
+      const current = new Date(newAttendance.date);
+      const end = new Date(newAttendance.dateTo!);
+      while (current <= end) {
+        dates.push(current.toISOString().split("T")[0]);
+        current.setDate(current.getDate() + 1);
+      }
+
+      // Filter out dates that already have attendance
+      const newDates = dates.filter(
+        (d) => !attendance.some((a) => a.student_id === newAttendance.student_id && a.date === d)
+      );
+
+      if (newDates.length === 0) {
+        toast.error("Santri sudah diabsen pada semua tanggal dalam rentang ini");
+        return;
+      }
+
+      const records = newDates.map((d) => ({
+        student_id: newAttendance.student_id!,
+        date: d,
+        status,
+        keterangan: newAttendance.keterangan,
+      }));
+
+      const saved = await createAttendanceBatch(records);
+      setAttendance((prev) => [...saved, ...prev]);
+      toast.success(`${saved.length} hari izin berhasil dicatat`);
+    } else {
+      // Single date
+      const exists = attendance.some(
+        (a) => a.student_id === newAttendance.student_id && a.date === newAttendance.date
+      );
+      if (exists) {
+        toast.error("Santri sudah diabsen pada tanggal ini");
+        return;
+      }
+      const record = {
+        student_id: newAttendance.student_id,
+        date: newAttendance.date,
+        status,
+        keterangan: status !== "hadir" ? newAttendance.keterangan : undefined,
+      };
+      const saved = await createAttendance(record);
+      setAttendance((prev) => [saved, ...prev]);
+      toast.success("Absensi berhasil dicatat");
+    }
+
     setDialogOpen(false);
-    setNewAttendance({ date: getLocalDate(), status: "hadir" });
+    setNewAttendance({ date: getLocalDate(), dateTo: getLocalDate(), status: "hadir" });
   };
 
   const handleBatchAbsensi = async () => {
@@ -265,6 +305,14 @@ export default function AttendancePage() {
   };
 
   const canAdd = (user?.role === "admin" || user?.role === "guru") && getCrudEnabled("attendance");
+  const isAdminCrud = user?.role === "admin" && getCrudEnabled("attendance");
+  const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
+
+  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
+    const attInRange = attendance.filter((a) => a.date >= startDate && a.date <= endDate);
+    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+    generateAttendancePdf(attInRange, students, kelasList, startDate, endDate, hijriLabel);
+  };
 
   const getKelasName = (kelasId: string | null) => {
     if (!kelasId) return "-";
@@ -282,6 +330,11 @@ export default function AttendancePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold gradient-text">Absensi Santri</h1>
           <div className="flex gap-2">
+            {isAdminCrud && (
+              <Button onClick={() => setPdfPickerOpen(true)} variant="outline" className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                <FileDown className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+            )}
             {user?.role === "admin" && (
               <Button onClick={() => setHolidayDialogOpen(true)} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
                 <Palmtree className="mr-2 h-4 w-4" /> Kelola Libur
@@ -518,27 +571,38 @@ export default function AttendancePage() {
                 <Select value={newAttendance.student_id ?? ""} onValueChange={(v) => setNewAttendance({ ...newAttendance, student_id: v })}>
                   <SelectTrigger className="h-10 rounded-xl border-emerald-200"><SelectValue placeholder="Pilih santri" /></SelectTrigger>
                   <SelectContent position="popper" className="max-h-60">
-                    {students.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name} ({getKelasName(s.kelas_id)})</SelectItem>))}
+                    {visibleStudents.map((s) => (<SelectItem key={s.id} value={s.id}>{s.name}{isGuru ? "" : ` (${getKelasName(s.kelas_id)})`}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              {(newAttendance.status === "izin" || newAttendance.status === "sakit") ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-emerald-600">Dari Tanggal</Label>
+                    <Input type="date" value={newAttendance.date} onChange={(e) => setNewAttendance({ ...newAttendance, date: e.target.value })} className="h-10 rounded-xl border-emerald-200" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-emerald-600">Sampai Tanggal</Label>
+                    <Input type="date" value={newAttendance.dateTo ?? newAttendance.date} onChange={(e) => setNewAttendance({ ...newAttendance, dateTo: e.target.value })} className="h-10 rounded-xl border-emerald-200" />
+                  </div>
+                </div>
+              ) : (
                 <div className="space-y-1.5">
                   <Label className="text-xs text-emerald-600">Tanggal</Label>
                   <Input type="date" value={newAttendance.date} onChange={(e) => setNewAttendance({ ...newAttendance, date: e.target.value })} className="h-10 rounded-xl border-emerald-200" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs text-emerald-600">Status</Label>
-                  <Select value={newAttendance.status} onValueChange={(v) => setNewAttendance({ ...newAttendance, status: v as AttendanceStatus })}>
-                    <SelectTrigger className="h-10 rounded-xl border-emerald-200"><SelectValue /></SelectTrigger>
-                    <SelectContent position="popper">
-                      <SelectItem value="hadir">Hadir</SelectItem>
-                      <SelectItem value="izin">Izin</SelectItem>
-                      <SelectItem value="sakit">Sakit</SelectItem>
-                      <SelectItem value="alfa">Alpha</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-emerald-600">Status</Label>
+                <Select value={newAttendance.status} onValueChange={(v) => setNewAttendance({ ...newAttendance, status: v as AttendanceStatus })}>
+                  <SelectTrigger className="h-10 rounded-xl border-emerald-200"><SelectValue /></SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value="hadir">Hadir</SelectItem>
+                    <SelectItem value="izin">Izin</SelectItem>
+                    <SelectItem value="sakit">Sakit</SelectItem>
+                    <SelectItem value="alfa">Alpha</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {newAttendance.status !== "hadir" && (
                 <div className="space-y-1.5">
@@ -577,6 +641,9 @@ export default function AttendancePage() {
 
       {/* Holiday Management Dialog */}
       <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
+
+      {/* Hijri Month Picker for PDF */}
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
     </div>
   );
 }

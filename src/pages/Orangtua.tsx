@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/select";
 import { Search, Plus, Trash2, Users, User } from "lucide-react";
 import { toast } from "sonner";
+import { usePagination } from "@/lib/usePagination";
+import Pagination from "@/components/Pagination";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" className={className}>
@@ -54,6 +56,8 @@ export default function OrangtuaPage() {
     }
     return list;
   }, [orangtuaProfiles, search]);
+
+  const { paginatedItems: paginatedOrangtua, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filteredData, 10);
 
   useEffect(() => {
     fetchAll();
@@ -149,7 +153,7 @@ export default function OrangtuaPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredData.map((parent) => {
+                {paginatedOrangtua.map((parent) => {
                   const parentStudentsList = getStudentsForParent(parent.id);
                   return (
                     <div key={parent.id} className="rounded-2xl border border-emerald-200 p-4 bg-white/90 shadow-sm hover:shadow-md transition-shadow">
@@ -210,6 +214,8 @@ export default function OrangtuaPage() {
             )}
           </CardContent>
         </Card>
+
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalItems={totalItems} pageSize={pageSize} />
 
         {/* Add Dialog */}
         <Dialog open={showDialog} onOpenChange={() => setShowDialog(false)}>

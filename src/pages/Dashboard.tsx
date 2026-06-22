@@ -61,8 +61,12 @@ export default function DashboardPage() {
     if (user?.role === "orangtua" && parentStudentIds.length > 0) {
       return payments.filter((p) => parentStudentIds.includes(p.student_id));
     }
+    if (user?.role === "guru" && guruKelasId) {
+      const kelasStudentIds = new Set(students.filter((s) => s.kelas_id === guruKelasId).map((s) => s.id));
+      return payments.filter((p) => kelasStudentIds.has(p.student_id));
+    }
     return payments;
-  }, [payments, user, parentStudentIds]);
+  }, [payments, user, parentStudentIds, guruKelasId, students]);
 
   const filteredAttendance = useMemo(() => {
     let list = attendance;
@@ -145,11 +149,59 @@ export default function DashboardPage() {
     [filteredPayments]
   );
 
-  // Recent absences
-  const recentAbsences = useMemo(
-    () => filteredAttendance.filter((a) => a.status !== "hadir").slice(0, 5),
-    [filteredAttendance]
-  );
+  // Recent absences — group consecutive izin/sakit per student into date ranges
+  const recentAbsences = useMemo(() => {
+    const nonHadir = filteredAttendance
+      .filter((a) => a.status !== "hadir")
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    // Group by student_id + status + keterangan for izin/sakit
+    const groups: Map<string, { student_id: string; status: string; keterangan: string; dates: string[] }> = new Map();
+    const standalone: typeof nonHadir = [];
+
+    for (const a of nonHadir) {
+      if (a.status === "izin" || a.status === "sakit") {
+        const key = `${a.student_id}|${a.status}|${a.keterangan || ""}`;
+        if (!groups.has(key)) {
+          groups.set(key, { student_id: a.student_id, status: a.status, keterangan: a.keterangan || "", dates: [] });
+        }
+        groups.get(key)!.dates.push(a.date);
+      } else {
+        standalone.push(a);
+      }
+    }
+
+    // Build grouped entries
+    const fmtDate = (d: string) => {
+      const dt = new Date(d);
+      return `${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}/${String(dt.getFullYear()).slice(-2)}`;
+    };
+
+    type AbsenceEntry = { student_id: string; status: string; keterangan: string; dateDisplay: string; id: string };
+    const entries: AbsenceEntry[] = [];
+
+    for (const [, g] of groups) {
+      const sorted = g.dates.sort();
+      const first = sorted[0];
+      const last = sorted[sorted.length - 1];
+      const dateDisplay = sorted.length > 1 ? `${fmtDate(first)} - ${fmtDate(last)}` : fmtDate(first);
+      entries.push({ student_id: g.student_id, status: g.status, keterangan: g.keterangan, dateDisplay, id: `${g.student_id}-${g.status}-${first}` });
+    }
+
+    // Add standalone (alfa) entries
+    for (const a of standalone) {
+      entries.push({ student_id: a.student_id, status: a.status, keterangan: a.keterangan || "", dateDisplay: fmtDate(a.date), id: a.id });
+    }
+
+    // Sort by most recent date
+    entries.sort((a, b) => {
+      const aDate = a.dateDisplay.includes(" - ") ? a.dateDisplay.split(" - ")[1] : a.dateDisplay;
+      const bDate = b.dateDisplay.includes(" - ") ? b.dateDisplay.split(" - ")[1] : b.dateDisplay;
+      return bDate.localeCompare(aDate);
+    });
+
+    return entries.slice(0, 5);
+  }, [filteredAttendance]);
 
   const formatRupiah = (n: number) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
@@ -318,7 +370,7 @@ export default function DashboardPage() {
                 <div key={a.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-emerald-50">
                   <div>
                     <p className="text-sm font-medium text-emerald-700">{getStudentName(a.student_id)}</p>
-                    <p className="text-xs text-emerald-500">{a.date} &middot; {a.keterangan}</p>
+                    <p className="text-xs text-emerald-500">{a.dateDisplay}{a.keterangan ? ` \u00b7 ${a.keterangan}` : ""}</p>
                   </div>
                   <span className={cn(
                     "text-xs font-semibold px-2.5 py-1 rounded-full",
