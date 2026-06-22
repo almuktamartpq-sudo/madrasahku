@@ -101,8 +101,8 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg object-cover border-2 border-white/20" />
             <div>
-              <span className="font-bold text-lg tracking-wide">MUKTAMAR</span>
-              <p className="text-[10px] text-emerald-100 font-medium">Sistem Manajemen</p>
+              <span className="font-bold text-lg tracking-wide">MDT AL-MUKTAMAR</span>
+              <p className="text-[10px] text-emerald-100 font-medium">Jl. H.M Winarto Lirboyo Kota Kediri</p>
             </div>
           </div>
           {isInstallable && (
