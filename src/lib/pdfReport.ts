@@ -93,12 +93,34 @@ function addHeader(doc: jsPDF, title: string, subtitle: string, logoDataUrl: str
   doc.text(title, pageWidth / 2, y, { align: "center" } as any);
   y += 5;
 
-  // Subtitle (date range / period, centered)
-  doc.setFontSize(8.5);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 100, 100);
+  // Subtitle (date range / period, centered, emerald, bold)
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(4, 120, 87);
   doc.text(subtitle, pageWidth / 2, y, { align: "center" } as any);
-  y += 8;
+  y += 7;
+
+  return y;
+}
+
+// Compact header: separator line + subtitle (for subsequent months in multi-month PDF)
+function addCompactHeader(doc: jsPDF, subtitle: string, startY?: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const ML = 10;
+  let y = startY ?? 12;
+
+  // Separator line first
+  doc.setDrawColor(180, 140, 20);
+  doc.setLineWidth(0.3);
+  doc.line(ML, y, pageWidth - ML, y);
+  y += 5;
+
+  // Month subtitle (centered, emerald, bold)
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(4, 120, 87);
+  doc.text(subtitle, pageWidth / 2, y, { align: "center" } as any);
+  y += 6;
 
   return y;
 }
@@ -204,6 +226,11 @@ function addFooter(doc: jsPDF) {
   doc.text("MADIN AL-MUKTAMAR", x, y + 32);
 }
 
+export function finalizePdf(doc: jsPDF, filename: string) {
+  addFooter(doc);
+  doc.save(filename);
+}
+
 // ============================================================
 // ATTENDANCE REPORT (landscape, per-day columns, by kelas)
 // ============================================================
@@ -214,9 +241,11 @@ export async function generateAttendancePdf(
   startDate: string,
   endDate: string,
   hijriLabel: string,
+  existingDoc?: jsPDF,
+  showHeader: boolean = true,
 ) {
   const logo = await loadLogo();
-  const doc = new jsPDF("l", "mm", "a4"); // landscape
+  const doc = existingDoc ?? new jsPDF("l", "mm", "a4");
   const pageW = doc.internal.pageSize.getWidth();
   const days = getGregorianDaysInRange(startDate, endDate);
   const dayNums = days.map((d) => new Date(d).getDate());
@@ -231,12 +260,23 @@ export async function generateAttendancePdf(
       attMap.get(a.student_id)!.set(a.date, a.status);
     });
 
-  const startY = addHeader(
-    doc,
-    "Rekap Absensi Santri",
-    `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
-    logo,
-  );
+  let startY: number;
+  if (showHeader) {
+    startY = addHeader(
+      doc,
+      "Rekap Absensi Santri",
+      `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
+      logo,
+    );
+  } else {
+    const lastY = Math.max((doc as any).lastAutoTable?.finalY ?? 12, (doc as any).__lastContentY ?? 12);
+    if (lastY + 50 > doc.internal.pageSize.getHeight()) {
+      doc.addPage();
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`);
+    } else {
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`, lastY + 8);
+    }
+  }
 
   // Summary stats
   const totalSantri = students.length;
@@ -264,7 +304,7 @@ export async function generateAttendancePdf(
   // Column widths
   const colNo = 8;
   const colName = 37;
-  const colDay = Math.min(7, (pageW - 10 - colNo - colName - 10) / days.length);
+  const colDay = Math.min(7, (pageW - 10 - colNo - colName - 10) / (days.length + 4));
 
   kelasList.forEach((kelas) => {
     const kelasStudents = students
@@ -362,8 +402,13 @@ export async function generateAttendancePdf(
     y = (doc as any).lastAutoTable.finalY + 8;
   });
 
-  addFooter(doc);
-  doc.save(`Absensi_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  // Track final Y position for multi-month continuity
+  (doc as any).__lastContentY = Math.max((doc as any).lastAutoTable?.finalY ?? 0, y);
+
+  if (!existingDoc) {
+    addFooter(doc);
+    doc.save(`Absensi_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  }
 }
 
 // ============================================================
@@ -377,21 +422,35 @@ export async function generateGradesPdf(
   startDate: string,
   endDate: string,
   hijriLabel: string,
+  existingDoc?: jsPDF,
+  showHeader: boolean = true,
 ) {
   const logo = await loadLogo();
-  const doc = new jsPDF("p", "mm", "a4");
+  const doc = existingDoc ?? new jsPDF("p", "mm", "a4");
+  const pageW = doc.internal.pageSize.getWidth();
   const studentMap = new Map(students.map((s) => [s.id, s]));
   const mapelMap = new Map(mapelList.map((m) => [m.id, m]));
 
   // Filter grades in date range
   const filtered = grades.filter((g) => dateInRange(g.date, startDate, endDate));
 
-  const startY = addHeader(
-    doc,
-    "Rekap Nilai Santri",
-    `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
-    logo,
-  );
+  let startY: number;
+  if (showHeader) {
+    startY = addHeader(
+      doc,
+      "Rekap Nilai Santri",
+      `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
+      logo,
+    );
+  } else {
+    const lastY = Math.max((doc as any).lastAutoTable?.finalY ?? 12, (doc as any).__lastContentY ?? 12);
+    if (lastY + 50 > doc.internal.pageSize.getHeight()) {
+      doc.addPage("p");
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`);
+    } else {
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`, lastY + 10);
+    }
+  }
 
   // Summary
   const scores = filtered.map((g) => g.score);
@@ -416,7 +475,7 @@ export async function generateGradesPdf(
       });
     if (kelasGrades.length === 0) return;
 
-    if (y > 250) { doc.addPage(); y = 15; }
+    if (y > doc.internal.pageSize.getHeight() - 47) { doc.addPage("p"); y = 15; }
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -424,6 +483,17 @@ export async function generateGradesPdf(
     doc.text(`Kelas: ${kelas.nama}`, 10, y);
     y += 2;
 
+    // Flexible column widths for portrait A4 (210mm, margins 10+10)
+    const availW = pageW - 10 - 10; // 190mm
+    const colStyles = {
+      0: { cellWidth: 10, halign: "center" as any },
+      1: { cellWidth: 18, halign: "center" as any },
+      2: { cellWidth: Math.min(45, availW * 0.28), halign: "left" as any },
+      3: { cellWidth: Math.min(35, availW * 0.22), halign: "left" as any },
+      4: { cellWidth: 14, halign: "center" as any },
+      5: { cellWidth: 12, halign: "center" as any },
+      6: { cellWidth: 10, halign: "center" as any },
+    };
     autoTable(doc, {
       startY: y,
       head: [["No", "Tanggal", "Nama Santri", "Mata Pelajaran", "Tipe", "Nilai", "Smt"]],
@@ -437,15 +507,7 @@ export async function generateGradesPdf(
       styles: { fontSize: 8, cellPadding: 2, textColor: [40, 40, 40] as any, lineColor: [200, 230, 220] as any, lineWidth: 0.2 },
       headStyles: { fillColor: [4, 120, 87] as any, textColor: [255, 255, 255] as any, fontStyle: "bold" as any, fontSize: 8, halign: "center" as any },
       alternateRowStyles: { fillColor: [245, 252, 248] as any },
-      columnStyles: {
-        0: { cellWidth: 10, halign: "center" as any },
-        1: { cellWidth: 20, halign: "center" as any },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 35 },
-        4: { cellWidth: 16, halign: "center" as any },
-        5: { cellWidth: 14, halign: "center" as any },
-        6: { cellWidth: 12, halign: "center" as any },
-      },
+      columnStyles: colStyles,
       didParseCell: (data) => {
         if (data.row.section === "body" && data.column.index === 5) {
           const val = parseInt(data.cell.raw as string);
@@ -456,14 +518,19 @@ export async function generateGradesPdf(
           data.cell.styles.fontStyle = "bold" as any;
         }
       },
-      margin: { left: 10, right: 5 }, // Reduced right margin
+      margin: { left: 10, right: 10 },
     });
 
     y = (doc as any).lastAutoTable.finalY + 8;
   });
 
-  addFooter(doc);
-  doc.save(`Nilai_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  // Track final Y position for multi-month continuity
+  (doc as any).__lastContentY = Math.max((doc as any).lastAutoTable?.finalY ?? 0, y);
+
+  if (!existingDoc) {
+    addFooter(doc);
+    doc.save(`Nilai_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  }
 }
 
 // ============================================================
@@ -476,9 +543,11 @@ export async function generateTeacherAttendancePdf(
   startDate: string,
   endDate: string,
   hijriLabel: string,
+  existingDoc?: jsPDF,
+  showHeader: boolean = true,
 ) {
   const logo = await loadLogo();
-  const doc = new jsPDF("l", "mm", "a4");
+  const doc = existingDoc ?? new jsPDF("l", "mm", "a4");
   const pageW = doc.internal.pageSize.getWidth();
   const days = getGregorianDaysInRange(startDate, endDate);
   const dayNums = days.map((d) => new Date(d).getDate());
@@ -499,12 +568,23 @@ export async function generateTeacherAttendancePdf(
       attMap.get(a.profile_id)!.set(a.date, a.status);
     });
 
-  const startY = addHeader(
-    doc,
-    "Rekap Absensi Guru & Munawib",
-    `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
-    logo,
-  );
+  let startY: number;
+  if (showHeader) {
+    startY = addHeader(
+      doc,
+      "Rekap Absensi Guru & Munawib",
+      `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`,
+      logo,
+    );
+  } else {
+    const lastY = Math.max((doc as any).lastAutoTable?.finalY ?? 12, (doc as any).__lastContentY ?? 12);
+    if (lastY + 50 > doc.internal.pageSize.getHeight()) {
+      doc.addPage();
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`);
+    } else {
+      startY = addCompactHeader(doc, `Bulan: ${hijriLabel}  (${formatDate(startDate)} — ${formatDate(endDate)})`, lastY + 8);
+    }
+  }
 
   // Summary
   let totalH = 0, totalI = 0, totalS = 0, totalA = 0;
@@ -532,7 +612,7 @@ export async function generateTeacherAttendancePdf(
 
   const colNo = 8;
   const colName = 37;
-  const colDay = Math.min(7, (pageW - 10 - colNo - colName - 10) / days.length);
+  const colDay = Math.min(7, (pageW - 10 - colNo - colName - 10) / (days.length + 4));
 
   const groups: { label: string; type: "guru" | "munawib" }[] = [
     { label: "Guru", type: "guru" },
@@ -624,6 +704,11 @@ export async function generateTeacherAttendancePdf(
     y = (doc as any).lastAutoTable.finalY + 8;
   });
 
-  addFooter(doc);
-  doc.save(`Absensi_Guru_Munawib_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  // Track final Y position for multi-month continuity
+  (doc as any).__lastContentY = Math.max((doc as any).lastAutoTable?.finalY ?? 0, y);
+
+  if (!existingDoc) {
+    addFooter(doc);
+    doc.save(`Absensi_Guru_Munawib_${hijriLabel.replace(/\s+/g, "_")}.pdf`);
+  }
 }

@@ -19,7 +19,7 @@ const statIconBase = "flex h-10 w-10 items-center justify-center rounded-xl";
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { students, profiles, payments, attendance, grades, kelas, teacherAttendance, parentStudents } = useAppStore();
+  const { students, profiles, payments, attendance, grades, kelas, mapel, teacherAttendance, parentStudents } = useAppStore();
 
   const [munawibAttendance, setMunawibAttendance] = useState<MunawibAttendance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,12 +110,9 @@ export default function DashboardPage() {
     return { lunas, pending, total: filteredPayments.length };
   }, [filteredPayments]);
 
-  // Rata-rata Nilai
-  const avgGrade = useMemo(() => {
-    if (filteredGrades.length === 0) return 0;
-    const sum = filteredGrades.reduce((acc, g) => acc + g.score, 0);
-    return Math.round(sum / filteredGrades.length);
-  }, [filteredGrades]);
+  const totalKelas = kelas.length;
+  const totalMunawib = profiles.filter((p) => p.role === "munawib").length;
+  const totalOrangtua = profiles.filter((p) => p.role === "orangtua").length;
 
   // Absensi Guru Hari Ini (admin only)
   const todaysTeacherAttendance = useMemo(() => {
@@ -227,7 +224,7 @@ export default function DashboardPage() {
         </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <Users className="h-5 w-5" />
@@ -246,18 +243,34 @@ export default function DashboardPage() {
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
+            <UserCheck className="h-5 w-5" />
+          </div>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{totalMunawib}</p>
+          <p className="text-xs text-emerald-600">Total Munawib</p>
+        </div>
+
+        <div className={statCardBase}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-amber-50 to-red-50 text-amber-600")}>
             <CreditCard className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-emerald-800">{paymentStats.lunas}</p>
-          <p className="text-xs text-emerald-600">Pembayaran Lunas</p>
+          <p className="mt-3 text-2xl font-bold text-amber-800">{totalOrangtua}</p>
+          <p className="text-xs text-emerald-600">Total Orang Tua</p>
         </div>
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
             <GraduationCap className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-emerald-800">{avgGrade}</p>
-          <p className="text-xs text-emerald-600">Rata-rata Nilai</p>
+          <p className="mt-3 text-2xl font-bold text-emerald-800">{mapel?.length ?? 0}</p>
+          <p className="text-xs text-emerald-600">Total Mapel</p>
+        </div>
+
+        <div className={statCardBase}>
+          <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-blue-50 text-blue-600")}>
+            <ClipboardCheck className="h-5 w-5" />
+          </div>
+          <p className="mt-3 text-2xl font-bold text-blue-800">{totalKelas}</p>
+          <p className="text-xs text-emerald-600">Total Kelas</p>
         </div>
       </div>
 

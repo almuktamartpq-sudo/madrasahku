@@ -106,8 +106,10 @@ export default function StudentsPage() {
 
   const filtered = useMemo(() => {
     let list = students;
-    if (isOrangtua && parentStudentIds.length > 0) {
-      list = list.filter((s) => parentStudentIds.includes(s.id));
+    if (isOrangtua) {
+      list = parentStudentIds.length > 0
+        ? list.filter((s) => parentStudentIds.includes(s.id))
+        : [];
     }
     if (isGuru && guruKelasId) {
       list = list.filter((s) => s.kelas_id === guruKelasId);
@@ -538,8 +540,8 @@ export default function StudentsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-emerald-600">Kelas</Label>
-                  <Select data-field="kelas_id" value={editing.kelas_id} onValueChange={(v) => setEditing({ ...editing, kelas_id: v })}>
-                    <SelectTrigger className="h-10 rounded-xl border-emerald-200">
+                  <Select value={editing.kelas_id} onValueChange={(v) => setEditing({ ...editing, kelas_id: v })}>
+                    <SelectTrigger data-field="kelas_id" className="h-10 rounded-xl border-emerald-200">
                       <SelectValue placeholder="Pilih kelas" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="max-h-60">

@@ -338,27 +338,7 @@ export default function MyAttendance() {
           </CardContent>
         </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-emerald-600">{stats.hadir}</div>
-            <p className="text-xs text-emerald-700">Hadir</p>
-          </CardContent></Card>
-          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-amber-600">{stats.izin}</div>
-            <p className="text-xs text-emerald-700">Izin</p>
-          </CardContent></Card>
-          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-blue-600">{stats.sakit}</div>
-            <p className="text-xs text-emerald-700">Sakit</p>
-          </CardContent></Card>
-          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-6 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
-            <p className="text-xs text-emerald-700">Belum absen</p>
-          </CardContent></Card>
-        </div>
-
-        {/* Riwayat - filtered by selected date only */}
+        {/* Riwayat */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-6">
             <h3 className="font-medium mb-3 text-emerald-900">

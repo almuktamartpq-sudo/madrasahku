@@ -27,7 +27,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
 
 export default function GuruPage() {
   const { user } = useAuth();
-  const { profiles, kelas, fetchAll } = useAppStore();
+  const { profiles, students, kelas, parentStudents, fetchAll } = useAppStore();
   const [search, setSearch] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [editingGuru, setEditingGuru] = useState<Profile | null>(null);
@@ -35,21 +35,62 @@ export default function GuruPage() {
 
   const isAdmin = user?.role === "admin";
   const isOrangtua = user?.role === "orangtua";
+  const isGuru = user?.role === "guru";
 
   useEffect(() => {
     fetchAll();
   }, []);
 
-  const guruList = useMemo(() => {
-    let list = profiles.filter((p) => p.role === "guru");
+  // Guru: parents of students in the guru's class
+  const classParents = useMemo(() => {
+    if (!isGuru || !user) return [];
+    const guruProfile = profiles.find((p) => p.id === user.id);
+    const kelasId = guruProfile?.kelas_id;
+    if (!kelasId) return [];
+    // Find students in this class
+    const classStudentIds = new Set(
+      students.filter((s) => s.kelas_id === kelasId).map((s) => s.id)
+    );
+    // Find parent_ids linked to these students
+    const parentIds = new Set(
+      parentStudents
+        .filter((ps) => classStudentIds.has(ps.student_id))
+        .map((ps) => ps.parent_id)
+    );
+    // Get parent profiles
+    return profiles.filter((p) => p.role === "orangtua" && parentIds.has(p.id));
+  }, [profiles, students, parentStudents, isGuru, user]);
+
+  const displayList = useMemo(() => {
+    if (isGuru) return classParents;
+    if (isOrangtua && user) {
+      const myStudentIds = new Set(
+        parentStudents
+          .filter((ps) => ps.parent_id === user.id)
+          .map((ps) => ps.student_id)
+      );
+      const myClassIds = new Set(
+        students
+          .filter((s) => myStudentIds.has(s.id))
+          .map((s) => s.kelas_id)
+      );
+      return profiles.filter(
+        (p) => p.role === "guru" && p.kelas_id && myClassIds.has(p.kelas_id)
+      );
+    }
+    return profiles.filter((p) => p.role === "guru");
+  }, [profiles, isGuru, isOrangtua, classParents, user, parentStudents, students]);
+
+  const filteredList = useMemo(() => {
+    let list = displayList;
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q));
     }
     return list.sort((a, b) => a.name.localeCompare(b.name));
-  }, [profiles, search]);
+  }, [displayList, search]);
 
-  const { paginatedItems: paginatedGuru, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(guruList, 10);
+  const { paginatedItems: paginatedGuru, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filteredList, 10);
 
   const openEdit = (guru: Profile) => {
     setEditingGuru(guru);
@@ -92,7 +133,7 @@ export default function GuruPage() {
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold gradient-text">
-            {isOrangtua ? "Guru" : "Data Guru"}
+            {isGuru ? "Orang Tua Kelas Saya" : isOrangtua ? "Guru" : "Data Guru"}
           </h1>
         </div>
 
@@ -102,7 +143,7 @@ export default function GuruPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600" />
               <Input
-                placeholder="Cari nama guru..."
+                placeholder={isGuru ? "Cari nama orang tua..." : "Cari nama guru..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 border-emerald-200 focus:border-emerald-400 focus:ring-emerald-200 bg-emerald-50/50"
@@ -114,10 +155,10 @@ export default function GuruPage() {
         {/* Guru List */}
         <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg">
           <CardContent className="pt-6">
-            {guruList.length === 0 ? (
+            {filteredList.length === 0 ? (
               <div className="text-center py-12 text-emerald-700">
                 <UserCheck className="h-12 w-12 mx-auto mb-4 opacity-50 text-emerald-600" />
-                <p>Belum ada data guru</p>
+                <p>{isGuru ? "Tidak ada orang tua ditemukan untuk kelas Anda" : "Belum ada data guru"}</p>
               </div>
             ) : isOrangtua ? (
               <div className="space-y-2">
@@ -135,6 +176,38 @@ export default function GuruPage() {
                     )}
                   </div>
                 ))}
+              </div>
+            ) : isGuru ? (
+              <div className="space-y-2">
+                {paginatedGuru.map((parent) => {
+                  // Find students linked to this parent IN GURU'S CLASS ONLY
+                  const guruKelasId = profiles.find((p) => p.id === user?.id)?.kelas_id;
+                  const linkedStudents = parentStudents
+                    .filter((ps) => ps.parent_id === parent.id)
+                    .map((ps) => students.find((s) => s.id === ps.student_id && s.kelas_id === guruKelasId))
+                    .filter(Boolean);
+                  return (
+                    <div key={parent.id} className="flex items-center justify-between p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50/50 transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-emerald-900">{parent.name}</p>
+                        {linkedStudents.length > 0 && (
+                          <p className="text-xs text-emerald-600 truncate">
+                            {linkedStudents.map((s) => s!.name).join(", ")}
+                          </p>
+                        )}
+                        {parent.phone && <p className="text-xs text-emerald-500 mt-0.5">{parent.phone}</p>}
+                      </div>
+                      {parent.phone && (
+                        <button
+                          onClick={() => openWhatsApp(parent.phone!)}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-amber-500 hover:from-emerald-600 hover:to-amber-600 text-white text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg"
+                        >
+                          <WhatsAppIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="space-y-2">

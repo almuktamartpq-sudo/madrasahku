@@ -468,8 +468,23 @@ CREATE POLICY payment_types_delete ON payment_types
 -- PARENT STUDENTS RLS
 -- ============================================
 
-CREATE POLICY parent_students_select ON parent_students
-  FOR SELECT TO authenticated USING (true);
+CREATE POLICY parent_students_admin_select ON parent_students
+  FOR SELECT TO authenticated
+  USING (is_admin());
+
+CREATE POLICY parent_students_guru_select ON parent_students
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM students s
+      WHERE s.id = parent_students.student_id
+      AND s.kelas_id = (SELECT kelas_id FROM profiles WHERE id = auth.uid())
+    )
+  );
+
+CREATE POLICY parent_students_parent_select ON parent_students
+  FOR SELECT TO authenticated
+  USING (parent_id = auth.uid());
 
 CREATE POLICY parent_students_insert ON parent_students
   FOR INSERT TO authenticated

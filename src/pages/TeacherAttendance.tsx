@@ -18,17 +18,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarDays, Save, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2, FileDown } from "lucide-react";
+import { CalendarDays, CheckCircle2, AlertTriangle, FileText, Clock, Search, ClipboardCheck, Calendar, Palmtree, Trash2, FileDown } from "lucide-react";
 import { toast } from "sonner";
-import { getCrudEnabled } from "@/pages/Settings";
+import { getCrudEnabled, getSemesterMonthEntries } from "@/pages/Settings";
 import { cn, getLocalDate } from "@/lib/utils";
-import { generateTeacherAttendancePdf } from "@/lib/pdfReport";
-import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
+import { generateTeacherAttendancePdf, finalizePdf } from "@/lib/pdfReport";
+import jsPDF from "jspdf";
+import HijriMonthPicker, { HIJRI_MONTHS, hijriMonthToGregorianRange } from "@/components/HijriMonthPicker";
 import {
   isOffDay,
   isHoliday,
   getHoliday,
-  getHolidayDates,
   getTodayHolidayNotice,
   getUpcomingHolidayNotice,
   OFF_DAY_NAME,
@@ -219,7 +219,8 @@ export default function TeacherAttendancePage() {
       hadir: records.filter((r) => r?.status === "hadir").length,
       izin: records.filter((r) => r?.status === "izin").length,
       sakit: records.filter((r) => r?.status === "sakit").length,
-      alfa: records.filter((r) => !r || r.status === "alfa").length,
+      alfa: records.filter((r) => r?.status === "alfa").length,
+      belumAbsen: records.filter((r) => !r).length,
       total: dayView.length,
       guru: allPeople.filter((p) => p.type === "guru").length,
       munawib: allPeople.filter((p) => p.type === "munawib").length,
@@ -365,27 +366,36 @@ export default function TeacherAttendancePage() {
     }
   };
 
-  const getStatus = (person: UnifiedPerson): AttendanceStatus | null => {
-    if (person.type === "guru") {
-      const record = teacherAttendance.find((a) => a.profile_id === person.sourceId && a.date === selectedDate);
-      return (record?.status as AttendanceStatus) || null;
-    } else {
-      const record = munawibAttendance.find((a) => a.profile_id === person.sourceId && a.date === selectedDate);
-      return (record?.status as AttendanceStatus) || null;
-    }
-  };
-
   const isAdmin = user?.role === "admin" && getCrudEnabled("teacher-attendance");
   const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
 
-  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
-    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
-    generateTeacherAttendancePdf(
-      allPeople.map((p) => ({ id: p.sourceId, name: p.name, type: p.type })),
-      teacherAttendance.filter((a) => a.date >= startDate && a.date <= endDate),
-      munawibAttendance.filter((a) => a.date >= startDate && a.date <= endDate),
-      startDate, endDate, hijriLabel
-    );
+  const handleDownloadPdf = async (hy: number, hm: number, startDate: string, endDate: string, _kelasId: string, semester: string) => {
+    const allPeopleData = allPeople.map((p) => ({ id: p.sourceId, name: p.name, type: p.type }));
+    // When semester is selected, get ordered {month, year} entries for cross-year support
+    let semesterEntries: { month: number; year: number }[] = [];
+    if (semester !== "all") {
+      semesterEntries = getSemesterMonthEntries(semester);
+    }
+    if (hm === 0) {
+      const doc = new jsPDF("l", "mm", "a4");
+      const entries = semesterEntries.length > 0
+        ? semesterEntries
+        : Array.from({ length: 12 }, (_, i) => ({ month: i + 1, year: hy }));
+      for (const [idx, entry] of entries.entries()) {
+        const range = hijriMonthToGregorianRange(entry.year, entry.month);
+        const monthLabel = `${HIJRI_MONTHS[entry.month - 1]} ${entry.year}`;
+        const taInRange = teacherAttendance.filter((a) => a.date >= range.startDate && a.date <= range.endDate);
+        const maInRange = munawibAttendance.filter((a) => a.date >= range.startDate && a.date <= range.endDate);
+        await generateTeacherAttendancePdf(allPeopleData, taInRange, maInRange, range.startDate, range.endDate, monthLabel, doc, idx === 0);
+      }
+      const filenameYear = semesterEntries.length > 0 ? semesterEntries[0].year : hy;
+      finalizePdf(doc, `Absensi_Guru_Munawib_${semester !== "all" ? `Semester_${semester}_` : ''}Tahun_${filenameYear}_H.pdf`);
+    } else {
+      const taInRange = teacherAttendance.filter((a) => a.date >= startDate && a.date <= endDate);
+      const maInRange = munawibAttendance.filter((a) => a.date >= startDate && a.date <= endDate);
+      const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+      await generateTeacherAttendancePdf(allPeopleData, taInRange, maInRange, startDate, endDate, hijriLabel);
+    }
   };
 
   return (
@@ -514,7 +524,7 @@ export default function TeacherAttendancePage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
             <div className="text-2xl font-bold text-emerald-600">{stats.total}</div>
             <p className="text-xs text-emerald-700">({stats.guru} Guru | {stats.munawib} Munawib)</p>
@@ -532,7 +542,11 @@ export default function TeacherAttendancePage() {
             <p className="text-xs text-emerald-700">Sakit</p>
           </CardContent></Card>
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.alfa}</div>
+            <p className="text-xs text-emerald-700">Alpha</p>
+          </CardContent></Card>
+          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
+            <div className="text-2xl font-bold text-slate-500">{stats.belumAbsen}</div>
             <p className="text-xs text-emerald-700">Belum absen</p>
           </CardContent></Card>
         </div>
@@ -690,7 +704,7 @@ export default function TeacherAttendancePage() {
       <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
 
       {/* Hijri Month Picker for PDF */}
-      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} showSemester />
     </div>
   );
 }

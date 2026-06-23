@@ -60,7 +60,11 @@ export default function Login() {
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-amber-300 rounded-full blur-3xl"></div>
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
-          <img src="/logo.png" alt="Logo" className="h-24 w-24 rounded-3xl shadow-2xl border-4 border-white/20 mb-8" />
+          <div className="logo-spin h-[112px] w-[112px] rounded-full mb-8">
+            <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-2 shadow-xl border-4 border-white/20">
+              <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
+            </div>
+          </div>
           <h1 className="text-5xl font-bold mb-4">Al-Muktamar</h1>
           <p className="text-xl text-white/80 mb-8">Sistem Informasi Madrasah</p>
           <div className="space-y-4 text-white/70">
@@ -85,7 +89,11 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
-            <img src="/logo.png" alt="Logo" className="h-20 w-20 mx-auto rounded-2xl shadow-lg border-2 border-emerald-200 mb-4" />
+            <div className="logo-spin h-[90px] w-[90px] rounded-full mb-4 mx-auto">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-1.5 shadow-lg border-2 border-emerald-200">
+                <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
+              </div>
+            </div>
             <h1 className="text-3xl font-bold gradient-text">Al-Muktamar</h1>
             <p className="text-sm text-emerald-600 mt-1">Sistem Informasi Madrasah</p>
           </div>

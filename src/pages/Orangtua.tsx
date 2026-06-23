@@ -37,12 +37,33 @@ export default function OrangtuaPage() {
   const [selectedStudent, setSelectedStudent] = useState("");
 
   const isAdmin = user?.role === "admin";
-  const canView = ["admin", "guru", "munawib"].includes(user?.role ?? "");
+  const isGuru = user?.role === "guru";
+  const isOrangtua = user?.role === "orangtua";
+  const canView = ["admin", "guru", "munawib", "orangtua"].includes(user?.role ?? "");
 
-  const orangtuaProfiles = useMemo(
-    () => profiles.filter((p) => p.role === "orangtua"),
-    [profiles]
-  );
+  // Guru: only see parents linked to students in their class
+  // Orangtua: only see own profile
+  const orangtuaProfiles = useMemo(() => {
+    const allOrangtua = profiles.filter((p) => p.role === "orangtua");
+    if (isOrangtua && user) {
+      return allOrangtua.filter((p) => p.id === user.id);
+    }
+    if (!isGuru || !user) return allOrangtua;
+    const guruProfile = profiles.find((p) => p.id === user.id);
+    const kelasId = guruProfile?.kelas_id;
+    if (!kelasId) return [];
+    // Students in guru's class
+    const classStudentIds = new Set(
+      students.filter((s) => s.kelas_id === kelasId).map((s) => s.id)
+    );
+    // Parent IDs linked to those students
+    const parentIds = new Set(
+      parentStudents
+        .filter((ps) => classStudentIds.has(ps.student_id))
+        .map((ps) => ps.parent_id)
+    );
+    return allOrangtua.filter((p) => parentIds.has(p.id));
+  }, [profiles, students, parentStudents, isGuru, isOrangtua, user]);
 
   const filteredData = useMemo(() => {
     let list = orangtuaProfiles;
@@ -65,7 +86,16 @@ export default function OrangtuaPage() {
 
   const getStudentsForParent = (parentId: string) => {
     const relations = parentStudents.filter((ps) => ps.parent_id === parentId);
-    return relations.map((r) => students.find((s) => s.id === r.student_id)).filter(Boolean);
+    let result = relations.map((r) => students.find((s) => s.id === r.student_id)).filter(Boolean);
+    // Guru: only show students in their class
+    if (isGuru && user) {
+      const guruProfile = profiles.find((p) => p.id === user.id);
+      const kelasId = guruProfile?.kelas_id;
+      if (kelasId) {
+        result = result.filter((s: any) => s.kelas_id === kelasId);
+      }
+    }
+    return result;
   };
 
   const getParentStudentRelation = (parentId: string, studentId: string) => {
@@ -122,7 +152,7 @@ export default function OrangtuaPage() {
       <div className="container mx-auto p-4 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold gradient-text">Orang Tua</h1>
+            <h1 className="text-3xl font-bold gradient-text">{isGuru ? "Orang Tua Kelas Saya" : isOrangtua ? "Data Anak Saya" : "Orang Tua"}</h1>
             <p className="text-sm text-emerald-600 mt-1">Data orang tua santri dan nomor WhatsApp.</p>
           </div>
           {isAdmin && (

@@ -18,14 +18,16 @@ import { CreditCard, Plus, Search, CheckCircle, Zap, Edit, Trash2, Users } from 
 import { toast } from "sonner";
 import type { PaymentType } from "@/types";
 import { getCrudEnabled } from "@/pages/Settings";
-import { fetchProfileKelasId } from "@/data/store";
+import { fetchProfileKelasId, fetchParentStudentIds } from "@/data/store";
 
 export default function Payments() {
   const { user } = useAuth();
   const { students, payments, paymentTypes, fetchAll } = useAppStore();
   const isAdmin = user?.role === "admin" && getCrudEnabled("payments");
   const isGuru = user?.role === "guru";
+  const isOrangtua = user?.role === "orangtua";
   const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
+  const [parentStudentIds, setParentStudentIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"types" | "students">(isAdmin ? "types" : "students");
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
@@ -48,6 +50,7 @@ export default function Payments() {
 
   useEffect(() => { fetchAll(); }, []);
   useEffect(() => { if (isGuru && user?.id) fetchProfileKelasId(user.id).then(setGuruKelasId); }, [isGuru, user?.id]);
+  useEffect(() => { if (isOrangtua && user?.id) fetchParentStudentIds(user.id).then(setParentStudentIds); }, [isOrangtua, user?.id]);
 
   // Payment type CRUD handlers
   const openAddType = () => {
@@ -122,6 +125,11 @@ export default function Payments() {
   // Filter payments by selected type
   const filteredPayments = useMemo(() => {
     let result = payments;
+    if (isOrangtua) {
+      result = parentStudentIds.length > 0
+        ? result.filter((p) => parentStudentIds.includes(p.student_id))
+        : [];
+    }
     if (isGuru && guruKelasId) {
       const kelasStudentIds = new Set(students.filter((s) => s.kelas_id === guruKelasId).map((s) => s.id));
       result = result.filter((p) => kelasStudentIds.has(p.student_id));
@@ -141,7 +149,7 @@ export default function Payments() {
       const sb = students.find((s) => s.id === b.student_id)?.name || "";
       return sa.localeCompare(sb);
     });
-  }, [payments, students, selectedType, search, isGuru, guruKelasId]);
+  }, [payments, students, selectedType, search, isGuru, guruKelasId, isOrangtua, parentStudentIds]);
 
   const stats = useMemo(() => {
     const total = filteredPayments.length;

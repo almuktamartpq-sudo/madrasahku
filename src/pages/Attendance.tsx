@@ -4,7 +4,7 @@ import { fetchAttendance, createAttendance, createAttendanceBatch, updateAttenda
 import * as api from "@/data/api";
 import type { Attendance, AttendanceStatus, Kelas } from "@/types";
 import { toast } from "sonner";
-import { getCrudEnabled } from "@/pages/Settings";
+import { getCrudEnabled, getSemesterMonthEntries } from "@/pages/Settings";
 import {
   Search,
   CheckCircle2,
@@ -39,8 +39,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn, getLocalDate } from "@/lib/utils";
-import { generateAttendancePdf } from "@/lib/pdfReport";
-import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
+import { generateAttendancePdf, finalizePdf } from "@/lib/pdfReport";
+import jsPDF from "jspdf";
+import HijriMonthPicker, { HIJRI_MONTHS, hijriMonthToGregorianRange } from "@/components/HijriMonthPicker";
 import {
   isOffDay,
   isHoliday,
@@ -96,8 +97,10 @@ export default function AttendancePage() {
   const today = getLocalDate();
 
   const visibleStudents = useMemo(() => {
-    if (isOrangtua && parentStudentIds.length > 0) {
-      return students.filter((s) => parentStudentIds.includes(s.id));
+    if (isOrangtua) {
+      return parentStudentIds.length > 0
+        ? students.filter((s) => parentStudentIds.includes(s.id))
+        : [];
     }
     if (isGuru && guruKelasId) {
       return students.filter((s) => s.kelas_id === guruKelasId);
@@ -125,7 +128,8 @@ export default function AttendancePage() {
       hadir: records.filter((r) => r?.status === "hadir").length,
       izin: records.filter((r) => r?.status === "izin").length,
       sakit: records.filter((r) => r?.status === "sakit").length,
-      alfa: records.filter((r) => !r || r.status === "alfa").length,
+      alfa: records.filter((r) => r?.status === "alfa").length,
+      belumAbsen: records.filter((r) => !r).length,
       total: dayView.length,
     };
   }, [dayView]);
@@ -308,10 +312,33 @@ export default function AttendancePage() {
   const isAdminCrud = user?.role === "admin" && getCrudEnabled("attendance");
   const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
 
-  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
-    const attInRange = attendance.filter((a) => a.date >= startDate && a.date <= endDate);
-    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
-    generateAttendancePdf(attInRange, students, kelasList, startDate, endDate, hijriLabel);
+  const handleDownloadPdf = async (hy: number, hm: number, startDate: string, endDate: string, kelasId: string, semester: string) => {
+    const filteredStudents = kelasId !== "all"
+      ? students.filter((s) => s.kelas_id === kelasId)
+      : students;
+    // When semester is selected, get ordered {month, year} entries for cross-year support
+    let semesterEntries: { month: number; year: number }[] = [];
+    if (semester !== "all") {
+      semesterEntries = getSemesterMonthEntries(semester);
+    }
+    if (hm === 0) {
+      const doc = new jsPDF("l", "mm", "a4");
+      const entries = semesterEntries.length > 0
+        ? semesterEntries
+        : Array.from({ length: 12 }, (_, i) => ({ month: i + 1, year: hy }));
+      for (const [idx, entry] of entries.entries()) {
+        const range = hijriMonthToGregorianRange(entry.year, entry.month);
+        const monthLabel = `${HIJRI_MONTHS[entry.month - 1]} ${entry.year}`;
+        const attInRange = attendance.filter((a) => a.date >= range.startDate && a.date <= range.endDate);
+        await generateAttendancePdf(attInRange, filteredStudents, kelasList, range.startDate, range.endDate, monthLabel, doc, idx === 0);
+      }
+      const filenameYear = semesterEntries.length > 0 ? semesterEntries[0].year : hy;
+      finalizePdf(doc, `Absensi_${semester !== "all" ? `Semester_${semester}_` : ''}Tahun_${filenameYear}_H.pdf`);
+    } else {
+      const attInRange = attendance.filter((a) => a.date >= startDate && a.date <= endDate);
+      const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+      await generateAttendancePdf(attInRange, filteredStudents, kelasList, startDate, endDate, hijriLabel);
+    }
   };
 
   const getKelasName = (kelasId: string | null) => {
@@ -425,7 +452,7 @@ export default function AttendancePage() {
         </Card>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
             <div className="text-2xl font-bold text-emerald-600">{stats.total}</div>
             <p className="text-xs text-emerald-700">Total Santri</p>
@@ -443,7 +470,11 @@ export default function AttendancePage() {
             <p className="text-xs text-emerald-700">Sakit</p>
           </CardContent></Card>
           <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
-            <div className="text-2xl font-bold text-slate-500">{stats.alfa}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.alfa}</div>
+            <p className="text-xs text-emerald-700">Alpha</p>
+          </CardContent></Card>
+          <Card className="border-emerald-200 bg-white/80 backdrop-blur-sm shadow-lg"><CardContent className="pt-4 text-center">
+            <div className="text-2xl font-bold text-slate-500">{stats.belumAbsen}</div>
             <p className="text-xs text-emerald-700">Belum absen</p>
           </CardContent></Card>
         </div>
@@ -643,7 +674,7 @@ export default function AttendancePage() {
       <HolidayDialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen} />
 
       {/* Hijri Month Picker for PDF */}
-      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} kelasList={kelasList} showSemester />
     </div>
   );
 }

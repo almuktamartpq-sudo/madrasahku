@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { toHijri, toGregorian } from "hijri-converter";
+import type { Kelas } from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -60,24 +61,35 @@ export function getCurrentHijriMonth(): HijriMonth {
 interface HijriMonthPickerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (hy: number, hm: number, startDate: string, endDate: string) => void;
+  onSelect: (hy: number, hm: number, startDate: string, endDate: string, kelasId: string, semester: string) => void;
+  kelasList?: Kelas[];
+  showSemester?: boolean;
 }
 
-export default function HijriMonthPicker({ open, onOpenChange, onSelect }: HijriMonthPickerProps) {
+export default function HijriMonthPicker({ open, onOpenChange, onSelect, kelasList = [], showSemester = false }: HijriMonthPickerProps) {
   const current = getCurrentHijriMonth();
-  const [hy, setHy] = useState(current.hy);
+  const hy = current.hy; // always use current Hijri year
   const [hm, setHm] = useState(current.hm);
-
-  // Generate year options: current year ± 3
-  const yearOptions = useMemo(() => {
-    const years: number[] = [];
-    for (let y = current.hy - 3; y <= current.hy + 1; y++) years.push(y);
-    return years;
-  }, [current.hy]);
+  const [kelasId, setKelasId] = useState("all");
+  const [semester, setSemester] = useState("all");
 
   const handleConfirm = () => {
-    const { startDate, endDate } = hijriMonthToGregorianRange(hy, hm);
-    onSelect(hy, hm, startDate, endDate);
+    if (hm === 0) {
+      // Semua bulan dalam satu tahun
+      const first = toGregorian(hy, 1, 1);
+      const startDate = `${first.gy}-${String(first.gm).padStart(2, "0")}-${String(first.gd).padStart(2, "0")}`;
+      // Cari hari terakhir bulan 12
+      let lastDay = 30;
+      const test = toGregorian(hy, 12, 30);
+      const backCheck = toHijri(test.gy, test.gm, test.gd);
+      if (backCheck.hm !== 12) lastDay = 29;
+      const last = toGregorian(hy, 12, lastDay);
+      const endDate = `${last.gy}-${String(last.gm).padStart(2, "0")}-${String(last.gd).padStart(2, "0")}`;
+      onSelect(hy, 0, startDate, endDate, kelasId, semester);
+    } else {
+      const { startDate, endDate } = hijriMonthToGregorianRange(hy, hm);
+      onSelect(hy, hm, startDate, endDate, kelasId, semester);
+    }
     onOpenChange(false);
   };
 
@@ -94,36 +106,53 @@ export default function HijriMonthPicker({ open, onOpenChange, onSelect }: Hijri
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-emerald-600">Bulan</Label>
-              <Select value={String(hm)} onValueChange={(v) => setHm(Number(v))}>
-                <SelectTrigger className="h-10 rounded-xl border-emerald-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {HIJRI_MONTHS.map((name, idx) => (
-                    <SelectItem key={idx} value={String(idx + 1)}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-emerald-600">Tahun</Label>
-              <Select value={String(hy)} onValueChange={(v) => setHy(Number(v))}>
-                <SelectTrigger className="h-10 rounded-xl border-emerald-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {yearOptions.map((y) => (
-                    <SelectItem key={y} value={String(y)}>{y} H</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-emerald-600">Bulan</Label>
+            <Select value={String(hm)} onValueChange={(v) => setHm(Number(v))}>
+              <SelectTrigger className="h-10 rounded-xl border-emerald-200">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-60 overflow-y-auto">
+                <SelectItem value="0">Semua</SelectItem>
+                {HIJRI_MONTHS.map((name, idx) => (
+                  <SelectItem key={idx} value={String(idx + 1)}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          {kelasList.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-emerald-600">Kelas</Label>
+              <Select value={kelasId} onValueChange={setKelasId}>
+                <SelectTrigger className="h-10 rounded-xl border-emerald-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 overflow-y-auto">
+                  <SelectItem value="all">Semua Kelas</SelectItem>
+                  {kelasList.map((k) => (
+                    <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {showSemester && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-emerald-600">Semester</Label>
+              <Select value={semester} onValueChange={setSemester}>
+                <SelectTrigger className="h-10 rounded-xl border-emerald-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Semester</SelectItem>
+                  <SelectItem value="1">Semester 1</SelectItem>
+                  <SelectItem value="2">Semester 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="text-xs text-emerald-500 text-center">
-            {HIJRI_MONTHS[hm - 1]} {hy} H
+            {hm === 0 ? `Semua Bulan ${hy} H` : `${HIJRI_MONTHS[hm - 1]} ${hy} H`}
           </div>
           <div className="flex gap-3 pt-1">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-10 rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50">

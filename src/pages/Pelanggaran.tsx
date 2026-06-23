@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { useAppStore } from "@/data/store";
-import { fetchParentStudentIds } from "@/data/store";
+import { fetchParentStudentIds, fetchProfileKelasId } from "@/data/store";
 import { getLocalDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,13 @@ export default function PelanggaranPage() {
 
   const canModify = user?.role === "admin" || user?.role === "guru";
   const isOrangtua = user?.role === "orangtua";
+  const isGuru = user?.role === "guru";
+  const [guruKelasId, setGuruKelasId] = useState<string | null>(null);
+
+  const dialogStudents = useMemo(() => {
+    if (isGuru && guruKelasId) return students.filter((s) => s.kelas_id === guruKelasId);
+    return students;
+  }, [students, isGuru, guruKelasId]);
 
   const visiblePelanggaran = useMemo(() => {
     let list = pelanggaran;
@@ -97,6 +104,9 @@ export default function PelanggaranPage() {
     if (isOrangtua && user?.id) {
       fetchParentStudentIds(user.id).then(setParentStudentIds);
     }
+    if (isGuru && user?.id) {
+      fetchProfileKelasId(user.id).then(setGuruKelasId);
+    }
     // Auto-fill search with student name when navigating from student card
     if (studentIdParam && students.length > 0) {
       const student = students.find((s) => s.id === studentIdParam);
@@ -107,7 +117,7 @@ export default function PelanggaranPage() {
   const openNew = () => {
     setEditing(null);
     setForm({
-      student_id: students[0]?.id ?? "",
+      student_id: "",
       tanggal: getLocalDate(),
       jenis: "ringan",
       kartu: "kuning",
@@ -254,13 +264,13 @@ export default function PelanggaranPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-emerald-800 font-medium">Santri</Label>
-              <Select value={form.student_id} onValueChange={(value) => setForm({ ...form, student_id: value })}>
+              <Select value={form.student_id || undefined} onValueChange={(value) => setForm({ ...form, student_id: value })}>
                 <SelectTrigger className="bg-white/80 border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200">
                   <SelectValue placeholder="Pilih santri" />
                 </SelectTrigger>
                 <SelectContent>
-                  {students.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} ({s.nis})</SelectItem>
+                  {dialogStudents.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

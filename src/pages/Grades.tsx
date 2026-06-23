@@ -10,7 +10,6 @@ import {
   Pencil,
   Calendar,
   Trash2,
-  BookOpen,
   FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,13 +32,15 @@ import {
 } from "@/components/ui/select";
 import * as api from "@/data/api";
 import { cn, getLocalDate } from "@/lib/utils";
-import { getCrudEnabled } from "@/pages/Settings";
+import { getCrudEnabled, getSemesterMonthEntries } from "@/pages/Settings";
 import { usePagination } from "@/lib/usePagination";
 import Pagination from "@/components/Pagination";
 import { toast } from "sonner";
 import { updateGrade } from "@/data/api";
-import { generateGradesPdf } from "@/lib/pdfReport";
-import HijriMonthPicker, { HIJRI_MONTHS } from "@/components/HijriMonthPicker";
+import { generateGradesPdf, finalizePdf } from "@/lib/pdfReport";
+import { toHijri } from "hijri-converter";
+import jsPDF from "jspdf";
+import HijriMonthPicker, { HIJRI_MONTHS, hijriMonthToGregorianRange } from "@/components/HijriMonthPicker";
 
 const gradeTypeConfig: Record<string, { label: string; color: string }> = {
   tamrin: { label: "Tamrin", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -79,15 +80,47 @@ export default function GradesPage() {
   const isAdminCrud = user?.role === "admin" && getCrudEnabled("grades");
   const [pdfPickerOpen, setPdfPickerOpen] = useState(false);
 
-  const handleDownloadPdf = (hy: number, hm: number, startDate: string, endDate: string) => {
-    const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
-    generateGradesPdf(grades, students, kelasList, mapelList, startDate, endDate, hijriLabel);
+  const handleDownloadPdf = async (hy: number, hm: number, startDate: string, endDate: string, kelasId: string, semester: string) => {
+    const filteredGrades = kelasId !== "all"
+      ? grades.filter((g) => g.kelas_id === kelasId)
+      : grades;
+    // When semester is selected, get ordered {month, year} entries for cross-year support
+    let semesterEntries: { month: number; year: number }[] = [];
+    let semesterGrades = filteredGrades;
+    if (semester !== "all") {
+      semesterEntries = getSemesterMonthEntries(semester);
+      // Build set of matching month+year pairs for grade filtering
+      const entrySet = new Set(semesterEntries.map((e) => `${e.month}-${e.year}`));
+      semesterGrades = filteredGrades.filter((g) => {
+        const d = new Date(g.date);
+        const h = toHijri(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        return entrySet.has(`${h.hm}-${h.hy}`);
+      });
+    }
+    if (hm === 0) {
+      const doc = new jsPDF("p", "mm", "a4");
+      const entries = semesterEntries.length > 0
+        ? semesterEntries
+        : Array.from({ length: 12 }, (_, i) => ({ month: i + 1, year: hy }));
+      for (const [idx, entry] of entries.entries()) {
+        const range = hijriMonthToGregorianRange(entry.year, entry.month);
+        const monthLabel = `${HIJRI_MONTHS[entry.month - 1]} ${entry.year}`;
+        await generateGradesPdf(semesterGrades, students, kelasList, mapelList, range.startDate, range.endDate, monthLabel, doc, idx === 0);
+      }
+      const filenameYear = semesterEntries.length > 0 ? semesterEntries[0].year : hy;
+      finalizePdf(doc, `Nilai_${semester !== "all" ? `Semester_${semester}_` : ''}Tahun_${filenameYear}_H.pdf`);
+    } else {
+      const hijriLabel = `${HIJRI_MONTHS[hm - 1]} ${hy}`;
+      await generateGradesPdf(semesterGrades, students, kelasList, mapelList, startDate, endDate, hijriLabel);
+    }
   };
 
   const filtered = useMemo(() => {
     let list = grades;
-    if (isOrangtua && parentStudentIds.length > 0) {
-      list = list.filter((g) => parentStudentIds.includes(g.student_id));
+    if (isOrangtua) {
+      list = parentStudentIds.length > 0
+        ? list.filter((g) => parentStudentIds.includes(g.student_id))
+        : [];
     }
     if (isGuru && guruKelasId) {
       list = list.filter((g) => g.kelas_id === guruKelasId);
@@ -119,7 +152,7 @@ export default function GradesPage() {
   // Filtered student list (guru sees only their kelas students)
   const studentList = useMemo(() => {
     let list = students;
-    if (isOrangtua && parentStudentIds.length > 0) list = list.filter((s) => parentStudentIds.includes(s.id));
+    if (isOrangtua) list = parentStudentIds.length > 0 ? list.filter((s) => parentStudentIds.includes(s.id)) : [];
     if (isGuru && guruKelasId) list = list.filter((s) => s.kelas_id === guruKelasId);
     return list;
   }, [students, isOrangtua, isGuru, parentStudentIds, guruKelasId]);
@@ -140,13 +173,15 @@ export default function GradesPage() {
   // Summary stats
   const stats = useMemo(() => {
     const filteredGrades = filtered;
-    if (filteredGrades.length === 0) return { avg: 0, max: 0, min: 0, count: 0 };
+    if (filteredGrades.length === 0) return { avg: 0, max: 0, min: 0, lulus: 0, perhatian: 0, perluPerbaikan: 0 };
     const scores = filteredGrades.map((g) => g.score);
     return {
       avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
       max: Math.max(...scores),
       min: Math.min(...scores),
-      count: scores.length,
+      lulus: scores.filter((s) => s > 70).length,
+      perhatian: scores.filter((s) => s >= 60 && s <= 70).length,
+      perluPerbaikan: scores.filter((s) => s <= 50).length,
     };
   }, [filtered]);
 
@@ -237,7 +272,7 @@ export default function GradesPage() {
         <div>
           <h1 className="text-3xl font-bold gradient-text">Nilai</h1>
           <p className="text-sm text-emerald-600 mt-0.5">
-            {stats.count} data nilai &middot; Rata-rata: {stats.avg}
+            {filtered.length} data nilai &middot; Rata-rata: {stats.avg}
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
@@ -263,7 +298,7 @@ export default function GradesPage() {
         </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
         <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
           <GraduationCap className="h-5 w-5 text-emerald-600 mb-2" />
           <p className="text-2xl font-bold text-emerald-800">{stats.avg}</p>
@@ -272,17 +307,33 @@ export default function GradesPage() {
         <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
           <TrendingUp className="h-5 w-5 text-emerald-600 mb-2" />
           <p className="text-2xl font-bold text-emerald-600">{stats.max}</p>
-          <p className="text-xs text-emerald-600">Nilai Tertinggi</p>
+          <p className="text-xs text-emerald-600">Tertinggi</p>
         </div>
         <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
           <TrendingUp className="h-5 w-5 text-amber-600 mb-2 rotate-180" />
           <p className="text-2xl font-bold text-amber-600">{stats.min}</p>
-          <p className="text-xs text-emerald-600">Nilai Terendah</p>
+          <p className="text-xs text-emerald-600">Terendah</p>
         </div>
         <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
-          <BookOpen className="h-5 w-5 text-emerald-600 mb-2" />
-          <p className="text-2xl font-bold text-emerald-800">{stats.count}</p>
-          <p className="text-xs text-emerald-600">Total Data</p>
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 mb-2">
+            <span className="text-emerald-600 text-xs font-bold">✓</span>
+          </div>
+          <p className="text-2xl font-bold text-emerald-600">{stats.lulus}</p>
+          <p className="text-xs text-emerald-600">Lulus (&gt;70)</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 mb-2">
+            <span className="text-amber-600 text-xs font-bold">!</span>
+          </div>
+          <p className="text-2xl font-bold text-amber-600">{stats.perhatian}</p>
+          <p className="text-xs text-emerald-600">Perhatian (60-70)</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-lg">
+          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 mb-2">
+            <span className="text-red-600 text-xs font-bold">✗</span>
+          </div>
+          <p className="text-2xl font-bold text-red-600">{stats.perluPerbaikan}</p>
+          <p className="text-xs text-emerald-600">Perlu Perbaikan (≤50)</p>
         </div>
       </div>
 
@@ -538,7 +589,7 @@ export default function GradesPage() {
       </Dialog>
 
       {/* Hijri Month Picker for PDF */}
-      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} />
+      <HijriMonthPicker open={pdfPickerOpen} onOpenChange={setPdfPickerOpen} onSelect={handleDownloadPdf} kelasList={kelasList} showSemester />
       </div>
     </div>
   );

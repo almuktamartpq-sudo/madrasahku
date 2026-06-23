@@ -103,16 +103,20 @@ export default function Layout({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className={cn("flex h-full flex-col bg-emerald-900 text-white transition-all duration-300", collapsed ? "w-[72px]" : "w-[260px]")}>
       <div className="flex h-16 items-center gap-3 px-4 border-b border-white/10">
-        <img src="/logo.png" alt="Logo" className="h-9 w-9 rounded-xl object-cover" />
+        <div className="logo-spin h-10 w-10 rounded-full">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-[3px] shadow-md">
+            <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
+          </div>
+        </div>
         {!collapsed && (
           <div className="flex-1 overflow-hidden">
-            <h1 className="text-lg font-bold tracking-tight">MUKTAMAR</h1>
-            <p className="text-[10px] text-white/50 -mt-0.5">Sistem Manajemen MUKTAMAR</p>
+            <h1 className="text-lg font-bold tracking-tight">MDT AL-MUKTAMAR</h1>
+            <p className="text-[10px] text-white/50 -mt-0.5">Jl. H.M Winarto Lirboyo Kota Kediri</p>
           </div>
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto sidebar-scrollbar">
         {navItems.map((item) => (
           <NavLink
             key={item.href}
@@ -188,7 +192,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         {mobileHeader}
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto content-scrollbar">
           <div className="p-4 md:p-6 lg:p-8 pb-20 lg:pb-8">{children}</div>
         </main>
 

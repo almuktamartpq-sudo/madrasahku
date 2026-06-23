@@ -76,6 +76,13 @@ export default function Home() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Desktop: redirect langsung ke dashboard
+  useEffect(() => {
+    if (window.innerWidth >= 1024) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [navigate]);
+
   const handleInstall = async () => {
     if (!installPrompt) return;
     installPrompt.prompt();
@@ -99,7 +106,11 @@ export default function Home() {
         {/* Header */}
         <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 text-white shadow-lg">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Logo" className="h-10 w-10 rounded-lg object-cover border-2 border-white/20" />
+            <div className="logo-spin h-[42px] w-[42px] rounded-full">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-[3px] border-2 border-white/20 shadow-md">
+                <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
+              </div>
+            </div>
             <div>
               <span className="font-bold text-lg tracking-wide">MDT AL-MUKTAMAR</span>
               <p className="text-[10px] text-emerald-100 font-medium">Jl. H.M Winarto Lirboyo Kota Kediri</p>
@@ -156,8 +167,8 @@ export default function Home() {
     <div className="hidden lg:block min-h-screen bg-gradient-to-br from-emerald-50 via-amber-50 to-yellow-50">
       <div className="p-6 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold gradient-text">Beranda</h1>
-          <p className="text-sm text-emerald-600 mt-1">Selamat datang, {user?.name}. Pilih menu di bawah.</p>
+          <h1 className="text-3xl font-bold gradient-text">MDT AL-MUKTAMAR</h1>
+          <p className="text-sm text-emerald-600 mt-1">Jl. H.M Winarto Lirboyo Kota Kediri</p>
         </div>
         <nav className="grid grid-cols-4 xl:grid-cols-5 gap-4">
           {menuItems.map((item) => (
