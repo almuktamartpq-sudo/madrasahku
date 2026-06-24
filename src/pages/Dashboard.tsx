@@ -5,7 +5,11 @@ import * as api from "@/data/api";
 import {
   Users,
   UserCheck,
+  UserCircle,
   CreditCard,
+  HeartHandshake,
+  Library,
+  BookOpen,
   ClipboardCheck,
   GraduationCap,
   TrendingUp,
@@ -243,7 +247,7 @@ export default function DashboardPage() {
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
-            <UserCheck className="h-5 w-5" />
+            <UserCircle className="h-5 w-5" />
           </div>
           <p className="mt-3 text-2xl font-bold text-emerald-800">{totalMunawib}</p>
           <p className="text-xs text-emerald-600">Total Munawib</p>
@@ -251,7 +255,7 @@ export default function DashboardPage() {
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-amber-50 to-red-50 text-amber-600")}>
-            <CreditCard className="h-5 w-5" />
+            <HeartHandshake className="h-5 w-5" />
           </div>
           <p className="mt-3 text-2xl font-bold text-amber-800">{totalOrangtua}</p>
           <p className="text-xs text-emerald-600">Total Orang Tua</p>
@@ -259,7 +263,7 @@ export default function DashboardPage() {
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-amber-50 text-emerald-600")}>
-            <GraduationCap className="h-5 w-5" />
+            <BookOpen className="h-5 w-5" />
           </div>
           <p className="mt-3 text-2xl font-bold text-emerald-800">{mapel?.length ?? 0}</p>
           <p className="text-xs text-emerald-600">Total Mapel</p>
@@ -267,7 +271,7 @@ export default function DashboardPage() {
 
         <div className={statCardBase}>
           <div className={cn(statIconBase, "bg-gradient-to-br from-emerald-50 to-blue-50 text-blue-600")}>
-            <ClipboardCheck className="h-5 w-5" />
+            <Library className="h-5 w-5" />
           </div>
           <p className="mt-3 text-2xl font-bold text-blue-800">{totalKelas}</p>
           <p className="text-xs text-emerald-600">Total Kelas</p>

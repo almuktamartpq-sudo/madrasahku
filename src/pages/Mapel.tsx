@@ -62,8 +62,6 @@ export default function MapelPage() {
     } catch (err: any) { toast.error("Gagal menghapus", { description: err.message }); }
   };
 
-  const getKelasNama = (kelasId: string) => kelas.find((k) => k.id === kelasId)?.nama || "-";
-
   // Group mapel by kelas, sorted by urutan
   const groupedMapel = useMemo(() => {
     const sortedKelas = [...kelas].sort((a, b) => a.urutan - b.urutan);

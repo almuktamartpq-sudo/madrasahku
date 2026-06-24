@@ -318,7 +318,7 @@ export default function StudentsPage() {
             <SelectTrigger className="h-10 w-[180px] rounded-xl border-emerald-200">
               <SelectValue placeholder="Semua Kelas" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" className="max-h-60">
               <SelectItem value="all">Semua Kelas</SelectItem>
               {kelasList.map((k) => (
                 <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>

@@ -103,7 +103,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const sidebar = (
     <div className={cn("flex h-full flex-col bg-emerald-900 text-white transition-all duration-300", collapsed ? "w-[72px]" : "w-[260px]")}>
       <div className="flex h-16 items-center gap-3 px-4 border-b border-white/10">
-        <div className="logo-spin h-10 w-10 rounded-full">
+        <div className="h-10 w-10 rounded-full" style={{ animation: 'none' }}>
           <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-[3px] shadow-md">
             <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
           </div>

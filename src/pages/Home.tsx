@@ -12,7 +12,6 @@ import {
   GraduationCap,
   LogOut,
   BookOpen,
-  Library,
   CalendarDays,
   UserCircle,
   UserCog,
@@ -106,8 +105,8 @@ export default function Home() {
         {/* Header */}
         <div className="flex h-16 items-center gap-3 px-4 bg-gradient-to-r from-emerald-700 via-emerald-600 to-amber-600 text-white shadow-lg">
           <div className="flex items-center gap-3">
-            <div className="logo-spin h-[42px] w-[42px] rounded-full">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-[3px] border-2 border-white/20 shadow-md">
+            <div className="h-[42px] w-[42px] rounded-full" style={{ animation: 'none' }}>
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-amber-500 p-[0.5px] shadow-md">
                 <img src="/logo.png" alt="Logo" className="h-full w-full rounded-full object-contain bg-[#fef7e0]" />
               </div>
             </div>

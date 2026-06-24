@@ -221,3 +221,24 @@
   position: relative;
   z-index: 1;
 }
+
+/* ============================================ */
+/* FIX: RADIX SELECT MOBILE DROPDOWN BLANKING  */
+/* ============================================ */
+@media (max-width: 1023px) {
+  [data-radix-select-viewport] {
+    position: relative;
+    z-index: 50;
+  }
+  
+  [data-radix-select-content] {
+    z-index: 9999 !important;
+    position: fixed !important;
+  }
+  
+  [role="option"] {
+    padding: 12px 16px;
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
