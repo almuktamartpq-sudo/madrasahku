@@ -407,7 +407,7 @@ export default function DashboardPage() {
         <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 shadow-lg">
           <div className="flex items-center gap-2 mb-4">
             <GraduationCap className="h-5 w-5 text-emerald-600" />
-            <h2 className="font-semibold text-emerald-800">Nilai Tertinggi</h2>
+            <h2 className="font-semibold text-emerald-800">Nilai Rata-rata Tertinggi</h2>
           </div>
           <div className="space-y-2">
             {(() => {
