@@ -44,13 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 
 const initialStudent: Student = {
   id: "",
@@ -314,17 +308,16 @@ export default function StudentsPage() {
               className="pl-10 h-10 rounded-xl border-emerald-200 bg-white/90"
             />
           </div>
-          <Select value={kelasFilter} onValueChange={setKelasFilter}>
-            <SelectTrigger className="h-10 w-[180px] rounded-xl border-emerald-200">
-              <SelectValue placeholder="Semua Kelas" />
-            </SelectTrigger>
-            <SelectContent position="popper" className="max-h-60">
-              <SelectItem value="all">Semua Kelas</SelectItem>
-              {kelasList.map((k) => (
-                <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <select
+            value={kelasFilter}
+            onChange={(e) => setKelasFilter(e.target.value)}
+            className="h-10 w-[180px] rounded-xl border border-emerald-200 bg-white px-3 text-sm text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          >
+            <option value="all">Semua Kelas</option>
+            {kelasList.map((k) => (
+              <option key={k.id} value={k.id}>{k.nama}</option>
+            ))}
+          </select>
         </div>
 
         {/* Student Grid */}
@@ -540,16 +533,16 @@ export default function StudentsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-emerald-600">Kelas</Label>
-                  <Select value={editing.kelas_id} onValueChange={(v) => setEditing({ ...editing, kelas_id: v })}>
-                    <SelectTrigger data-field="kelas_id" className="h-10 rounded-xl border-emerald-200">
-                      <SelectValue placeholder="Pilih kelas" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="max-h-60">
-                      {kelasList.map((k) => (
-                        <SelectItem key={k.id} value={k.id}>{k.nama}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={editing.kelas_id}
+                    onChange={(e) => setEditing({ ...editing, kelas_id: e.target.value })}
+                    className="h-10 w-full rounded-xl border border-emerald-200 bg-white px-3 text-sm text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  >
+                    <option value="" disabled>Pilih kelas</option>
+                    {kelasList.map((k) => (
+                      <option key={k.id} value={k.id}>{k.nama}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
