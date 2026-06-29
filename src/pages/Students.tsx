@@ -120,8 +120,17 @@ export default function StudentsPage() {
     if (kelasFilter && kelasFilter !== "all") {
       list = list.filter((s) => s.kelas_id === kelasFilter);
     }
+    // Sort by class order, then alphabetically by name
+    list.sort((a, b) => {
+      const kA = kelasList.find((k) => k.id === a.kelas_id);
+      const kB = kelasList.find((k) => k.id === b.kelas_id);
+      const orderA = kA?.urutan ?? 999;
+      const orderB = kB?.urutan ?? 999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name, 'id');
+    });
     return list;
-  }, [students, search, kelasFilter, isOrangtua, parentStudentIds, isGuru, guruKelasId]);
+  }, [students, search, kelasFilter, isOrangtua, parentStudentIds, isGuru, guruKelasId, kelasList]);
 
   const { paginatedItems: paginatedStudents, currentPage, totalPages, setCurrentPage, totalItems, pageSize } = usePagination(filtered, 12);
 
